@@ -3,6 +3,8 @@ uvicorn[standard]
 langgraph
 langchain
 langchain-ollama
+langgraph-checkpoint-postgres
+psycopg[binary,pool]
 python-dotenv
 pydantic
 httpx

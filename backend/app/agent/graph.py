@@ -37,7 +37,7 @@ async def chatbot(state: MessagesState):
     return {"messages": [response]}
 
 
-def build_graph():
+def build_graph(checkpointer):
     graph = StateGraph(MessagesState)
 
     graph.add_node("chatbot", chatbot)
@@ -52,7 +52,4 @@ def build_graph():
 
     graph.add_edge("tools", "chatbot")
 
-    return graph.compile()
-
-
-agent = build_graph()
+    return graph.compile(checkpointer=checkpointer)
