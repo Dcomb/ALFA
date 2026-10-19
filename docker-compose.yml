@@ -7,12 +7,15 @@ services:
     env_file:
       - .env
     environment:
-      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_MODEL: kamekichi128/qwen3-4b-instruct-2507
       DATABASE_URL: postgresql://alfa:alfa@db:5432/alfa
     depends_on:
       db:
         condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -23,6 +26,7 @@ services:
       API_URL: http://backend:8000
     depends_on:
       - backend
+    restart: unless-stopped
 
   db:
     image: postgres:16
@@ -40,6 +44,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -54,7 +59,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: alfa-ollama
+    ports:
+      - "127.0.0.1:11435:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   pgadmin_data:
+  ollama_data:

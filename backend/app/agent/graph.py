@@ -17,6 +17,7 @@ llm = ChatOllama(
     ),
     temperature=0,
     num_ctx=8192,
+    keep_alive=-1,
 )
 
 tools = [get_score, recommend_product]
