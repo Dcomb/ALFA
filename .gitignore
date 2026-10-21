@@ -1,2 +1,7 @@
 .venv/
 .env
+CLAUDE.md
+docs/architecture.md
+docker-compose.override.yml
+__pycache__/
+.pytest_cache/
