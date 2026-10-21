@@ -2,11 +2,23 @@ import os
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from app.shemas import ChatResponse, ChatRequest
 from app.agent.graph import build_graph
+from app.ranking import calculator as calc
+from app.ranking.catalog import products
+from app.ranking.clients import get_client
+from app.ranking.engine import recommend
+from app.ranking.schemas import (
+    CalcRequest,
+    CalcResponse,
+    LimitRequest,
+    LimitResponse,
+    RecommendRequest,
+    RecommendResponse,
+)
 
 
 @asynccontextmanager
@@ -48,4 +60,53 @@ async def chat(request: ChatRequest):
     return ChatResponse(
         response=str(result["messages"][-1].content),
         thread_id=request.thread_id,
+    )
+
+
+def resolve_client(request):
+    if request.client is not None:
+        return request.client
+
+    client = get_client(request.client_id) if request.client_id else None
+
+    if client is None:
+        raise HTTPException(404, f"клиент {request.client_id} не найден")
+
+    return client
+
+
+@app.get("/ranking/products")
+def list_products():
+    return products()
+
+
+@app.post("/ranking/recommend", response_model=RecommendResponse)
+def recommend_product(request: RecommendRequest):
+    return recommend(
+        resolve_client(request),
+        request.need,
+        request.top_k,
+    )
+
+
+@app.post("/ranking/calculator/payment", response_model=CalcResponse)
+def calculate_payment(request: CalcRequest):
+    return calc.loan_offer(
+        request.amount,
+        request.annual_rate,
+        request.term_months,
+    )
+
+
+@app.post("/ranking/calculator/limit", response_model=LimitResponse)
+def calculate_limit(request: LimitRequest):
+    client = resolve_client(request)
+
+    return LimitResponse(
+        free_cash_flow=round(calc.free_cash_flow(client), 2),
+        max_monthly_payment=round(calc.max_monthly_payment(client), 2),
+        max_amount=round(
+            calc.max_loan_amount(client, request.annual_rate, request.term_months),
+            2,
+        ),
     )
