@@ -40,6 +40,20 @@ VALID_REQUESTS = {
         "message": "Привет",
         "thread_id": "system-test",
     },
+    ("GET", "/clients"): None,
+    ("GET", "/me"): None,
+    ("GET", "/applications"): None,
+    ("GET", "/applications/{application_id}"): None,
+}
+
+CLIENT_HEADERS = {"X-Client-Id": "demo_cafe"}
+
+PATH_SAMPLES = {
+    "/applications/{application_id}": "/applications/999999",
+}
+
+EXPECTED_STATUS = {
+    ("GET", "/applications/{application_id}"): 404,
 }
 
 NEEDS_OLLAMA = {("POST", "/chat")}
@@ -62,8 +76,12 @@ def ollama_up():
         return False
 
 
+def url(path):
+    return f"{API_URL}{PATH_SAMPLES.get(path, path)}"
+
+
 def call(method, path, body=None):
-    return httpx.request(method, f"{API_URL}{path}", json=body, timeout=60)
+    return httpx.request(method, url(path), json=body, headers=CLIENT_HEADERS, timeout=60)
 
 
 @pytest.mark.parametrize("url", [FRONTEND_URL, PGADMIN_URL])
@@ -87,7 +105,7 @@ def test_valid_request(route):
     if route in NEEDS_OLLAMA and not ollama_up():
         pytest.skip("Ollama не запущена")
     response = call(*route, VALID_REQUESTS[route])
-    assert response.status_code == 200, response.text
+    assert response.status_code == EXPECTED_STATUS.get(route, 200), response.text
 
 
 @pytest.mark.parametrize("body", INVALID_BODIES, ids=["empty", "unexpected", "list"])
@@ -99,9 +117,9 @@ def test_invalid_body_is_422(route, body):
 @pytest.mark.parametrize("route", POST_ROUTES, ids=[p for _, p in POST_ROUTES])
 def test_not_json_is_422(route):
     response = httpx.post(
-        f"{API_URL}{route[1]}",
+        url(route[1]),
         content="not json",
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", **CLIENT_HEADERS},
         timeout=10,
     )
     assert response.status_code == 422

@@ -8,3 +8,4 @@ psycopg[binary,pool]
 python-dotenv
 pydantic
 httpx
+sqlalchemy

@@ -2,11 +2,17 @@ import os
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.shemas import ChatResponse, ChatRequest
 from app.agent.graph import build_graph
+from app.conveyor import models as conveyor_models
+from app.conveyor.auth import current_client, own_application
+from app.conveyor.db import get_session, init_db
+from app.conveyor.schemas import ApplicationBrief, ApplicationOut, ClientBrief, ClientOut
 from app.ranking import calculator as calc
 from app.ranking.catalog import products
 from app.ranking.clients import get_client
@@ -24,6 +30,8 @@ from app.ranking.schemas import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     database_url = os.environ["DATABASE_URL"]
+
+    init_db()
 
     async with AsyncPostgresSaver.from_conn_string(
         database_url
@@ -110,3 +118,34 @@ def calculate_limit(request: LimitRequest):
             2,
         ),
     )
+
+
+@app.get("/clients", response_model=list[ClientBrief])
+def list_demo_clients(session: Session = Depends(get_session)):
+    return session.scalars(
+        select(conveyor_models.Client).order_by(conveyor_models.Client.id)
+    ).all()
+
+
+@app.get("/me", response_model=ClientOut)
+def me(client: conveyor_models.Client = Depends(current_client)):
+    return client
+
+
+@app.get("/applications", response_model=list[ApplicationBrief])
+def list_applications(
+    client: conveyor_models.Client = Depends(current_client),
+    session: Session = Depends(get_session),
+):
+    return session.scalars(
+        select(conveyor_models.Application)
+        .where(conveyor_models.Application.client_id == client.id)
+        .order_by(conveyor_models.Application.id.desc())
+    ).all()
+
+
+@app.get("/applications/{application_id}", response_model=ApplicationOut)
+def get_application(
+    application: conveyor_models.Application = Depends(own_application),
+):
+    return application
