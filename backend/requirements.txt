@@ -8,3 +8,8 @@ psycopg[binary,pool]
 python-dotenv
 pydantic
 httpx
+pandas
+langchain-text-splitters
+qdrant-client
+langchain-qdrant
+fastembed
