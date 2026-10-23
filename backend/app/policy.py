@@ -15,6 +15,7 @@ class Affordability(Section):
     dscr: float = Field(gt=1)
     overdraft_turnover_share: float = Share
     collateral_ltv: float = Share
+    reference_rate: float = Field(gt=0, lt=100)
 
 
 class NeedMatch(Section):
@@ -45,6 +46,10 @@ class RiskClasses(Section):
         return self
 
 
+class Explanation(Section):
+    min_factor_points: float = Field(ge=0)
+
+
 class Verification(Section):
     revenue_tolerance: float = Field(ge=0, lt=1)
     debt_tolerance: float = Field(ge=0, lt=1)
@@ -58,6 +63,7 @@ class Policy(Section):
     need_match: NeedMatch
     concessions: Concessions
     risk_classes: RiskClasses
+    explanation: Explanation
     verification: Verification
 
 

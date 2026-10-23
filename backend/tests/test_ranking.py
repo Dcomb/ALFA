@@ -20,12 +20,12 @@ def test_products():
 
 
 def test_annuity_roundtrip():
-    payment = calc.annuity_payment(1_000_000, 15, 24)
-    assert calc.principal_from_payment(payment, 15, 24) == pytest.approx(1_000_000)
+    payment = calc.annuity_payment(1000000, 15, 24)
+    assert calc.principal_from_payment(payment, 15, 24) == pytest.approx(1000000)
 
 
 def test_zero_rate():
-    assert calc.annuity_payment(120_000, 0, 12) == pytest.approx(10_000)
+    assert calc.annuity_payment(120000, 0, 12) == pytest.approx(10000)
 
 
 def test_cash_gap_gives_overdraft_first():
@@ -35,7 +35,7 @@ def test_cash_gap_gives_overdraft_first():
 
 
 def test_payment_fits_cash_flow():
-    r = post('/recommend', {'client_id': 'demo_cafe', 'need': {'purpose': 'investment', 'amount': 5_000_000}})
+    r = post('/recommend', {'client_id': 'demo_cafe', 'need': {'purpose': 'investment', 'amount': 5000000}})
     limit = calc.max_monthly_payment(get_client('demo_cafe'))
     for rec in r.json()['recommendations']:
         if rec['monthly_payment'] is not None:
@@ -102,7 +102,7 @@ def test_huge_amount():
 
 
 def test_calculator_payment():
-    r = post('/calculator/payment', {'amount': 1_000_000, 'annual_rate': 15, 'term_months': 24})
+    r = post('/calculator/payment', {'amount': 1000000, 'annual_rate': 15, 'term_months': 24})
     assert r.status_code == 200
     assert r.json()['overpayment'] > 0
 
@@ -129,7 +129,7 @@ def recommend_all(client_body, need):
     return r.json()
 
 
-POOR_CAFE = {**CAFE, 'has_alfa_account': False, 'monthly_expenses': 1_180_000}
+POOR_CAFE = {**CAFE, 'has_alfa_account': False, 'monthly_expenses': 1180000}
 
 
 def test_rejected_by_business_age_has_wait_hint():
@@ -153,42 +153,42 @@ def test_no_alfa_account_hint():
 
 
 def test_collateral_hint_uses_requested_amount():
-    d = recommend_all(CAFE, {'purpose': 'investment', 'amount': 1_000_000})
+    d = recommend_all(CAFE, {'purpose': 'investment', 'amount': 1000000})
     secured = next(x for x in d['rejected'] if x['product_id'] == 'loan_secured')
     assert '2 000 000' in secured['hint']
 
 
 def test_cash_flow_rejection_has_positive_shortfall():
-    d = recommend_all(POOR_CAFE, {'purpose': 'working_capital', 'amount': 1_000_000})
+    d = recommend_all(POOR_CAFE, {'purpose': 'working_capital', 'amount': 1000000})
     line = next(x for x in d['rejected'] if x['product_id'] == 'credit_line_unsecured')
     assert line['reason'].startswith('по денежному потоку')
     assert 'больше на' in line['hint'] and '-' not in line['hint']
 
 
 def test_term_extended_instead_of_rejection():
-    d = recommend_all(POOR_CAFE, {'purpose': 'refinancing', 'amount': 1_000_000})
+    d = recommend_all(POOR_CAFE, {'purpose': 'refinancing', 'amount': 1000000})
     refinancing = next(x for x in d['recommendations'] if x['product_id'] == 'refinancing')
     assert refinancing['term_months'] > 36
     assert any('срок увеличен' in w for w in refinancing['warnings'])
 
 
 def test_term_clamp_warning():
-    d = recommend_all(CAFE, {'purpose': 'working_capital', 'amount': 500_000, 'term_months': 200})
+    d = recommend_all(CAFE, {'purpose': 'working_capital', 'amount': 500000, 'term_months': 200})
     line = next(x for x in d['recommendations'] if x['product_id'] == 'credit_line_unsecured')
     assert line['term_months'] == 18
     assert any('срок 200 мес. недоступен' in w for w in line['warnings'])
 
 
 def test_min_amount_warning():
-    d = recommend_all(CAFE, {'purpose': 'working_capital', 'amount': 100_000})
+    d = recommend_all(CAFE, {'purpose': 'working_capital', 'amount': 100000})
     loan = next(x for x in d['recommendations'] if x['product_id'] == 'loan_any_purpose')
-    assert loan['amount'] == 300_000
+    assert loan['amount'] == 300000
     assert any('минимальная сумма продукта' in w for w in loan['warnings'])
 
 
 def test_longer_term_alternatives_fit_cash_flow():
-    d = recommend_all(POOR_CAFE, {'purpose': 'working_capital', 'amount': 1_000_000})
-    limit = calc.max_monthly_payment(get_client('demo_cafe').model_copy(update={'monthly_expenses': 1_180_000}))
+    d = recommend_all(POOR_CAFE, {'purpose': 'working_capital', 'amount': 1000000})
+    limit = calc.max_monthly_payment(get_client('demo_cafe').model_copy(update={'monthly_expenses': 1180000}))
     options = [(rec, opt) for rec in d['recommendations'] for opt in rec['alternatives']]
     assert options
     for rec, opt in options:
@@ -210,7 +210,7 @@ def test_no_concessions_when_something_fits():
 
 
 def test_concessions_when_nothing_fits():
-    d = recommend_all(NEWBIE, {'purpose': 'working_capital', 'amount': 2_000_000})
+    d = recommend_all(NEWBIE, {'purpose': 'working_capital', 'amount': 2000000})
     concessions = d['concessions']
     assert 0 < len(concessions) <= 3
     assert len({c['product_id'] for c in concessions}) == len(concessions)
@@ -221,15 +221,15 @@ def test_concessions_when_nothing_fits():
 
 
 def test_waiting_is_not_feasible_now():
-    d = recommend_all(NEWBIE, {'purpose': 'working_capital', 'amount': 2_000_000})
+    d = recommend_all(NEWBIE, {'purpose': 'working_capital', 'amount': 2000000})
     for c in d['concessions']:
         if any(ch['kind'] in ('wait', 'collateral') for ch in c['changes']):
             assert not c['feasible_now']
 
 
 def test_concession_offers_fit_cash_flow():
-    d = recommend_all(POOR_CAFE, {'purpose': 'working_capital', 'amount': 1_000_000})
-    limit = calc.max_monthly_payment(get_client('demo_cafe').model_copy(update={'monthly_expenses': 1_180_000}))
+    d = recommend_all(POOR_CAFE, {'purpose': 'working_capital', 'amount': 1000000})
+    limit = calc.max_monthly_payment(get_client('demo_cafe').model_copy(update={'monthly_expenses': 1180000}))
     assert d['concessions']
     for c in d['concessions']:
         if c['offer']['monthly_payment'] is not None:
@@ -237,7 +237,7 @@ def test_concession_offers_fit_cash_flow():
 
 
 def test_immutable_requirement_never_conceded():
-    d = recommend_all({**CAFE, 'owner_age': 70}, {'purpose': 'cash_gap', 'amount': 50_000_000})
+    d = recommend_all({**CAFE, 'owner_age': 70}, {'purpose': 'cash_gap', 'amount': 50000000})
     assert d['concessions']
     assert 'overdraft' not in {c['product_id'] for c in d['concessions']}
 
@@ -247,7 +247,7 @@ def test_account_concession():
     from app.ranking.engine import concession_variants
     from app.ranking.schemas import ClientProfile, Need
     client = ClientProfile(**{**CAFE, 'has_alfa_account': False})
-    variants = concession_variants(client, get_product('overdraft'), Need(purpose='cash_gap', amount=300_000))
+    variants = concession_variants(client, get_product('overdraft'), Need(purpose='cash_gap', amount=300000))
     assert variants
     assert any(ch.kind == 'account' for ch in variants[0].changes)
     assert variants[0].feasible_now

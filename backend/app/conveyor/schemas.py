@@ -135,6 +135,25 @@ class CheckOut(ORM):
     created_at: datetime
 
 
+Status = Literal[
+    "draft", "submitted", "checking", "needs_info", "scoring",
+    "approved", "counteroffer", "declined", "closed", "withdrawn",
+]
+
+
+class BankApplicationBrief(ORM):
+    id: int
+    client: ClientBrief
+    status: str
+    product_id: str | None
+    amount: float | None
+    term_months: int | None
+    issues: list[str]
+    decision: DecisionOut | None
+    created_at: datetime
+    updated_at: datetime
+
+
 class ProcessingOut(ORM):
     id: int
     status: str
@@ -143,3 +162,19 @@ class ProcessingOut(ORM):
     sources: list[SourceDetailOut]
     checks: list[CheckOut]
     decisions: list[DecisionDetailOut]
+
+
+class BankApplicationOut(ProcessingOut):
+    client: ClientOut
+    product_id: str | None
+    amount: float | None
+    term_months: int | None
+    purpose: str | None
+    declared_revenue: float | None
+    declared_expenses: float | None
+    declared_debt_payment: float | None
+    applicant_role: str | None
+    collateral_asset_id: int | None
+    accepted_option: dict | None
+    created_at: datetime
+    updated_at: datetime

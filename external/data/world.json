@@ -65,7 +65,7 @@
       "avg_monthly_account_turnover": 7900000,
       "turnover_trend_6m": 0.05,
       "revenue_seasonality_cv": 0.12,
-      "neg_balance_days_share_12m": 0.0
+      "neg_balance_days_share_12m": 0
     },
     "bki": {
       "bki_active_loans": 2,
@@ -135,7 +135,7 @@
     },
     "bank": {
       "avg_monthly_account_turnover": 900000,
-      "turnover_trend_6m": 0.0,
+      "turnover_trend_6m": 0,
       "revenue_seasonality_cv": 0.1,
       "neg_balance_days_share_12m": 0.02
     },
@@ -295,7 +295,7 @@
     },
     "bank": {
       "avg_monthly_account_turnover": 1100000,
-      "turnover_trend_6m": 0.0,
+      "turnover_trend_6m": 0,
       "revenue_seasonality_cv": 0.2,
       "neg_balance_days_share_12m": 0.05
     },
@@ -341,7 +341,7 @@
     },
     "bank": {
       "avg_monthly_account_turnover": 2500000,
-      "turnover_trend_6m": 0.0,
+      "turnover_trend_6m": 0,
       "revenue_seasonality_cv": 0.15,
       "neg_balance_days_share_12m": 0.03
     },

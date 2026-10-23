@@ -20,6 +20,24 @@ def current_client(
     return client
 
 
+def bank_employee(x_role: str | None = Header(default=None)):
+    if x_role != "bank":
+        raise HTTPException(403, "нужна роль сотрудника банка: заголовок X-Role: bank")
+
+
+def any_application(
+    application_id: int,
+    _: None = Depends(bank_employee),
+    session: Session = Depends(get_session),
+) -> Application:
+    application = session.get(Application, application_id)
+
+    if application is None:
+        raise HTTPException(404, "заявка не найдена")
+
+    return application
+
+
 def own_application(
     application_id: int,
     client: Client = Depends(current_client),

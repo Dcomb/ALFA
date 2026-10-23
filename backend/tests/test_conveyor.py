@@ -55,8 +55,8 @@ OVERRIDES = {}
 WORLD = {
     "egrul": {"legal_form": "IP", "registry_status": "active", "registration_date": "2024-01-15"},
     "fns": {"disqualified_person_flag": 0, "tax_arrears_flag": 0, "mass_address_flag": 0, "court_cases_12m": 0},
-    "girbo": {"total_assets": 10_000_000},
-    "bank": {"avg_monthly_account_turnover": 1_200_000},
+    "girbo": {"total_assets": 10000000},
+    "bank": {"avg_monthly_account_turnover": 1200000},
     "bki": {"existing_monthly_payment": 0, "current_overdue_days": 0},
 }
 
@@ -100,7 +100,7 @@ def database():
 
 def add_application(client_id):
     with SessionLocal() as session:
-        application = Application(client_id=client_id, product_id="overdraft", amount=500_000)
+        application = Application(client_id=client_id, product_id="overdraft", amount=500000)
         session.add(application)
         session.commit()
         return application.id
@@ -155,11 +155,11 @@ def test_missing_application_is_not_found():
 
 FULL_DRAFT = {
     "product_id": "loan_any_purpose",
-    "amount": 1_000_000,
+    "amount": 1000000,
     "term_months": 24,
     "purpose": "working_capital",
-    "declared_revenue": 1_200_000,
-    "declared_expenses": 950_000,
+    "declared_revenue": 1200000,
+    "declared_expenses": 950000,
     "bki_consent": True,
 }
 
@@ -207,9 +207,9 @@ def test_collateral_must_belong_to_client():
 
 def test_update_draft():
     application = create()
-    response = client.patch(f"/applications/{application['id']}", json={"amount": 750_000}, headers=CAFE)
+    response = client.patch(f"/applications/{application['id']}", json={"amount": 750000}, headers=CAFE)
     assert response.status_code == 200
-    assert response.json()["amount"] == 750_000
+    assert response.json()["amount"] == 750000
     assert response.json()["term_months"] == 24
 
 
@@ -432,7 +432,7 @@ def test_disqualified_director_declines_only_ooo():
 
 
 def test_revenue_above_turnover_needs_info():
-    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 500_000}
+    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 500000}
     application = submit()
     assert application["status"] == "needs_info"
     assert application["info_rounds"] == 1
@@ -440,18 +440,18 @@ def test_revenue_above_turnover_needs_info():
 
 
 def test_corrected_revenue_passes_without_refetching_sources():
-    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 500_000}
+    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 500000}
     application = submit()
     CALLS.clear()
 
-    corrected = resubmit(application["id"], declared_revenue=600_000, declared_expenses=450_000)
+    corrected = resubmit(application["id"], declared_revenue=600000, declared_expenses=450000)
     assert corrected["status"] in {"approved", "counteroffer"}
     assert corrected["issues"] == []
     assert CALLS == []
 
 
 def test_third_failed_round_is_declined():
-    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 500_000}
+    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 500000}
     application = submit()
     assert resubmit(application["id"])["status"] == "needs_info"
 
@@ -462,14 +462,14 @@ def test_third_failed_round_is_declined():
 
 
 def test_hidden_debt_needs_info():
-    OVERRIDES["bki"] = {"existing_monthly_payment": 300_000}
-    application = submit(declared_debt_payment=100_000)
+    OVERRIDES["bki"] = {"existing_monthly_payment": 300000}
+    application = submit(declared_debt_payment=100000)
     assert application["status"] == "needs_info"
     assert "БКИ" in application["issues"][0]
 
 
 def test_debt_taken_from_bki_when_not_declared():
-    OVERRIDES["bki"] = {"existing_monthly_payment": 300_000}
+    OVERRIDES["bki"] = {"existing_monthly_payment": 300000}
     application = submit()
     assert "debt_from_bki" in check_codes(application["id"])
     assert application["status"] == "declined"
@@ -477,7 +477,7 @@ def test_debt_taken_from_bki_when_not_declared():
 
 
 def test_withdraw_from_needs_info():
-    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 500_000}
+    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 500000}
     application = submit()
     response = client.post(f"/applications/{application['id']}/withdraw", headers=CAFE)
     assert response.json()["status"] == "withdrawn"
@@ -517,8 +517,8 @@ def test_scoring_is_monotonic():
 
     base = {
         "max_overdue_days_24m": 0, "overdue_90_24m": 0, "inquiries_6m": 0, "bki_score": 600,
-        "existing_monthly_payment": 0, "new_monthly_payment": 50_000, "business_age_months": 24,
-        "monthly_revenue": 1_200_000, "monthly_expenses": 950_000,
+        "existing_monthly_payment": 0, "new_monthly_payment": 50000, "business_age_months": 24,
+        "monthly_revenue": 1200000, "monthly_expenses": 950000,
         "tax_arrears": 0, "mass_address": 0, "court_cases_12m": 0,
     }
     clean = score(base)
@@ -544,11 +544,12 @@ def test_approved_decision_has_terms_within_cash_flow():
 
 
 def test_amount_above_cash_flow_gives_counteroffer():
-    application = submit(amount=8_000_000)
+    application = submit(amount=8000000)
     decision = application["decision"]
     assert application["status"] == "counteroffer"
     assert decision["options"]
-    assert all(o["amount"] < 8_000_000 for o in decision["options"])
+    assert decision["options"][0]["amount"] < 8000000
+    assert all(o["amount"] < 8000000 or o["term_months"] > FULL_DRAFT["term_months"] for o in decision["options"])
     assert decision["options"][0]["changes"][0].startswith("сумма")
 
 
@@ -561,8 +562,8 @@ def test_gray_zone_without_assets_offers_msp_guarantee():
 
 def test_gray_zone_with_assets_offers_collateral():
     OVERRIDES["bki"] = GRAY_BKI
-    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 7_900_000}
-    application = submit(headers=LOGISTICS, applicant_role="director", declared_revenue=8_000_000, declared_expenses=6_500_000)
+    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 7900000}
+    application = submit(headers=LOGISTICS, applicant_role="director", declared_revenue=8000000, declared_expenses=6500000)
     OVERRIDES.clear()
     securities = [o["security"] for o in application["decision"]["options"]]
     assert application["status"] == "counteroffer"
@@ -579,7 +580,7 @@ def test_high_risk_is_declined_with_factors():
 
 
 def test_accept_counteroffer():
-    application = submit(amount=8_000_000)
+    application = submit(amount=8000000)
     response = client.post(f"/applications/{application['id']}/accept", json={"option": 0}, headers=CAFE)
     assert response.status_code == 200
     assert response.json()["status"] == "approved"
@@ -588,14 +589,14 @@ def test_accept_counteroffer():
 
 def test_accept_collateral_option_sets_asset():
     OVERRIDES["bki"] = GRAY_BKI
-    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 7_900_000}
-    application = submit(headers=LOGISTICS, applicant_role="director", declared_revenue=8_000_000, declared_expenses=6_500_000)
+    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 7900000}
+    application = submit(headers=LOGISTICS, applicant_role="director", declared_revenue=8000000, declared_expenses=6500000)
     response = client.post(f"/applications/{application['id']}/accept", json={"option": 0}, headers=LOGISTICS)
     assert response.json()["collateral_asset_id"] == application["decision"]["options"][0]["asset_id"]
 
 
 def test_accept_unknown_option():
-    application = submit(amount=8_000_000)
+    application = submit(amount=8000000)
     response = client.post(f"/applications/{application['id']}/accept", json={"option": 9}, headers=CAFE)
     assert response.status_code == 422
 
@@ -607,13 +608,13 @@ def test_accept_without_counteroffer():
 
 
 def test_decline_counteroffer_closes():
-    application = submit(amount=8_000_000)
+    application = submit(amount=8000000)
     response = client.post(f"/applications/{application['id']}/decline-offer", headers=CAFE)
     assert response.json()["status"] == "closed"
 
 
 def test_ip_personal_loans_are_mentioned():
-    OVERRIDES["bki"] = {"existing_monthly_payment": 30_000, "personal_monthly_payment": 30_000}
+    OVERRIDES["bki"] = {"existing_monthly_payment": 30000, "personal_monthly_payment": 30000}
     application = submit()
     assert any("личные кредиты" in reason for reason in application["decision"]["reasons"])
 
@@ -625,3 +626,96 @@ def test_processing_journal_shows_scoring():
     assert decision["risk_class"] in {"A", "B"}
     assert decision["model_version"] == "expert-scorecard"
     assert decision["factors"]
+
+
+def test_risk_is_scored_on_offered_amount():
+    application = submit(amount=8000000)
+    decision = application["decision"]
+    assert application["status"] == "counteroffer"
+    assert all(o["security"] is None for o in decision["options"])
+    assert "класс риска C" not in decision["reasons"][0]
+
+
+def test_leasing_is_limited_by_cash_flow():
+    application = submit(product_id="leasing", purpose="vehicle", amount=7000000, term_months=36)
+    decision = application["decision"]
+    limit = (FULL_DRAFT["declared_revenue"] - FULL_DRAFT["declared_expenses"]) / 1.25
+    assert application["status"] == "counteroffer"
+    assert decision["options"][0]["amount"] < 7000000
+    assert decision["options"][0]["monthly_payment"] <= limit + 1
+    assert any("лизингу" in reason for reason in decision["reasons"])
+
+
+def test_affordable_leasing_is_approved_with_payment():
+    application = submit(product_id="leasing", purpose="vehicle", amount=2000000, term_months=36)
+    assert application["status"] == "approved"
+    assert application["decision"]["monthly_payment"] > 0
+
+
+def test_guarantee_is_scored_by_commission():
+    application = submit(product_id="bank_guarantee", purpose="tender", amount=1500000, term_months=12)
+    assert application["status"] == "approved"
+
+
+def test_minor_factors_are_not_reasons():
+    OVERRIDES["bki"] = {"bki_max_overdue_days_24m": 60, "bki_overdue_90_24m": 2, "bki_inquiries_6m": 1}
+    application = submit()
+    assert application["status"] == "declined"
+    assert not any("запросов в другие банки" in reason for reason in application["decision"]["reasons"])
+
+
+def test_guarantee_is_limited_by_reimbursement_capacity():
+    application = submit(product_id="bank_guarantee", purpose="tender", amount=100000000, term_months=12)
+    decision = application["decision"]
+    assert application["status"] == "counteroffer"
+    assert all(o["amount"] < 100000000 for o in decision["options"])
+    assert any("предъявят к оплате" in reason for reason in decision["reasons"])
+
+
+BANK = {"X-Role": "bank"}
+
+
+def test_bank_api_requires_role():
+    assert client.get("/bank/applications").status_code == 403
+    assert client.get("/bank/applications", headers=CAFE).status_code == 403
+    assert client.get("/bank/applications", headers={"X-Role": "client"}).status_code == 403
+
+
+def test_bank_sees_applications_of_all_clients():
+    cafe = submit()
+    logistics = create(headers=LOGISTICS)
+    applications = client.get("/bank/applications", headers=BANK).json()
+    by_id = {a["id"]: a for a in applications}
+    assert {cafe["id"], logistics["id"]} <= set(by_id)
+    assert by_id[cafe["id"]]["client"]["id"] == "demo_cafe"
+    assert by_id[cafe["id"]]["decision"]["outcome"] == "approved"
+    assert by_id[logistics["id"]]["status"] == "draft"
+
+
+def test_bank_filters_by_status_and_client():
+    approved = submit()
+    draft = create(headers=LOGISTICS)
+
+    by_status = client.get("/bank/applications", params={"status": "approved"}, headers=BANK).json()
+    assert [a["id"] for a in by_status] == [approved["id"]]
+
+    by_client = client.get("/bank/applications", params={"client_id": "demo_logistics"}, headers=BANK).json()
+    assert [a["id"] for a in by_client] == [draft["id"]]
+
+
+def test_bank_rejects_unknown_status():
+    response = client.get("/bank/applications", params={"status": "lost"}, headers=BANK)
+    assert response.status_code == 422
+
+
+def test_bank_journal_of_any_application():
+    application = submit()
+    journal = client.get(f"/bank/applications/{application['id']}", headers=BANK).json()
+    assert journal["client"]["inn"]
+    assert [h["to_status"] for h in journal["history"]][-1] == "approved"
+    assert journal["sources"] and journal["checks"]
+    assert journal["decisions"][0]["risk_class"] in {"A", "B"}
+
+
+def test_bank_journal_unknown_application():
+    assert client.get("/bank/applications/999999", headers=BANK).status_code == 404

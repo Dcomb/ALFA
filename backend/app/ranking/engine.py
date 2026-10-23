@@ -224,7 +224,7 @@ def build_offer(client, product, need):
         offer.update(amount=round(amount, 2), max_amount=round(cap, 2))
         return (offer, score), None
 
-    amount = requested or 0.0
+    amount = requested or 0
     score = get_score(client, product, amount or 1.0, term)
     offer.update(amount=amount or None, rate=product.get('rate_from'))
     if product['type'] == 'guarantee' and amount:
@@ -287,7 +287,7 @@ def apply_fixes(client, product, need, fixes):
             changes.append(Change(kind='account', text='открыть расчетный счет в Альфа-Банке'))
     if product.get('requires_own_collateral'):
         amin, _ = amount_bounds(product)
-        needed = max(need.amount if need and need.amount else 0.0, amin) / calc.COLLATERAL_LTV
+        needed = max(need.amount if need and need.amount else 0, amin) / calc.COLLATERAL_LTV
         if not client.has_collateral or client.collateral_value < needed:
             update.update(has_collateral=True, collateral_value=needed)
             changes.append(Change(kind='collateral', text=f'предоставить залог стоимостью от {rub(needed)}'))

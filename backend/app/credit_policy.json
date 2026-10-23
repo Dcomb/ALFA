@@ -3,7 +3,8 @@
   "affordability": {
     "dscr": 1.25,
     "overdraft_turnover_share": 0.3,
-    "collateral_ltv": 0.5
+    "collateral_ltv": 0.5,
+    "reference_rate": 16.5
   },
   "need_match": {
     "exact": 1.0,
@@ -23,6 +24,9 @@
     "A": 0.02,
     "B": 0.05,
     "C": 0.12
+  },
+  "explanation": {
+    "min_factor_points": 0.25
   },
   "verification": {
     "revenue_tolerance": 0.3,

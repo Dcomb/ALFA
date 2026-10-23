@@ -60,9 +60,11 @@ VALID_REQUESTS = {
     ("GET", "/applications/{application_id}/processing"): None,
     ("POST", "/applications/{application_id}/accept"): {"option": 0},
     ("POST", "/applications/{application_id}/decline-offer"): None,
+    ("GET", "/bank/applications"): None,
+    ("GET", "/bank/applications/{application_id}"): None,
 }
 
-CLIENT_HEADERS = {"X-Client-Id": "demo_cafe"}
+CLIENT_HEADERS = {"X-Client-Id": "demo_cafe", "X-Role": "bank"}
 
 EXPECTED_STATUS = {
     ("POST", "/applications"): 201,

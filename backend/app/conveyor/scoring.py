@@ -1,8 +1,6 @@
 import math
 from dataclasses import dataclass, field
 
-from app.ranking.calculator import annuity_payment
-
 MODEL_VERSION = "expert-scorecard"
 INTERCEPT = -3.4
 
@@ -11,6 +9,7 @@ INTERCEPT = -3.4
 class Factor:
     name: str
     value: float
+    points: float
     impact: float
     text: str
 
@@ -75,13 +74,13 @@ def score(features):
         if part == 0:
             continue
         impact = pd - sigmoid(z - part)
-        factors.append(Factor(name, value, round(impact, 4), template.format(value=value)))
+        factors.append(Factor(name, value, round(part, 3), round(impact, 4), template.format(value=value)))
 
     factors.sort(key=lambda f: -abs(f.impact))
     return ScoreResult(pd=round(pd, 4), model_version=MODEL_VERSION, factors=factors)
 
 
-def features_from(answers, business_age_months, monthly_revenue, monthly_expenses, amount, rate, term_months):
+def features_from(answers, business_age_months, monthly_revenue, monthly_expenses, new_monthly_payment):
     bki = answers["bki"][1] or {}
     fns = answers["fns"][1] or {}
     return {
@@ -90,7 +89,7 @@ def features_from(answers, business_age_months, monthly_revenue, monthly_expense
         "inquiries_6m": bki.get("bki_inquiries_6m", 0),
         "bki_score": bki.get("bki_score", 600),
         "existing_monthly_payment": bki.get("existing_monthly_payment", 0),
-        "new_monthly_payment": annuity_payment(amount, rate, term_months),
+        "new_monthly_payment": new_monthly_payment,
         "business_age_months": business_age_months,
         "monthly_revenue": monthly_revenue,
         "monthly_expenses": monthly_expenses,

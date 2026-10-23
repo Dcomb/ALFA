@@ -24,8 +24,8 @@ DEMO_CLIENTS = [
         "owner_name": "Громов Дмитрий Сергеевич",
         "owner_age": 45,
         "assets": [
-            {"kind": "real_estate", "description": "складское помещение 600 м²", "market_value": 20_000_000},
-            {"kind": "vehicle", "description": "седельный тягач, 2021 г.", "market_value": 7_500_000},
+            {"kind": "real_estate", "description": "складское помещение 600 м²", "market_value": 20000000},
+            {"kind": "vehicle", "description": "седельный тягач, 2021 г.", "market_value": 7500000},
         ],
     },
     {
@@ -111,7 +111,7 @@ DEMO_CLIENTS = [
         "owner_name": "Фролов Игорь Викторович",
         "owner_age": 50,
         "assets": [
-            {"kind": "equipment", "description": "токарный станок с ЧПУ", "market_value": 4_000_000},
+            {"kind": "equipment", "description": "токарный станок с ЧПУ", "market_value": 4000000},
         ],
     },
 ]

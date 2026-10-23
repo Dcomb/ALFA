@@ -13,7 +13,7 @@ from app.shemas import ChatResponse, ChatRequest
 from app.agent.graph import build_graph
 from app.conveyor import lifecycle
 from app.conveyor import models as conveyor_models
-from app.conveyor.auth import current_client, own_application
+from app.conveyor.auth import any_application, bank_employee, current_client, own_application
 from app.conveyor.db import get_session, init_db
 from app.conveyor.schemas import (
     AcceptOffer,
@@ -21,9 +21,12 @@ from app.conveyor.schemas import (
     ApplicationCreate,
     ApplicationOut,
     ApplicationUpdate,
+    BankApplicationBrief,
+    BankApplicationOut,
     ClientBrief,
     ClientOut,
     ProcessingOut,
+    Status,
 )
 from app.ranking import calculator as calc
 from app.ranking.catalog import products
@@ -242,3 +245,26 @@ def withdraw_application(
     session: Session = Depends(get_session),
 ):
     return lifecycle.withdraw(session, application)
+
+@app.get("/bank/applications", response_model=list[BankApplicationBrief])
+def bank_list_applications(
+    status: Status | None = None,
+    client_id: str | None = None,
+    _: None = Depends(bank_employee),
+    session: Session = Depends(get_session),
+):
+    query = select(conveyor_models.Application).order_by(conveyor_models.Application.updated_at.desc())
+
+    if status is not None:
+        query = query.where(conveyor_models.Application.status == status)
+    if client_id is not None:
+        query = query.where(conveyor_models.Application.client_id == client_id)
+
+    return session.scalars(query).all()
+
+
+@app.get("/bank/applications/{application_id}", response_model=BankApplicationOut)
+def bank_get_application(
+    application: conveyor_models.Application = Depends(any_application),
+):
+    return application

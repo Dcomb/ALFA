@@ -11,7 +11,7 @@ def _sigmoid(z):
 def get_score(client, product, amount, term_months):
     rate_from = product.get('rate_from')
     operating = client.monthly_revenue - client.monthly_expenses
-    payment = annuity_payment(amount, rate_from or 15.0, term_months) if product['type'] in ('term_loan', 'line', 'revolving') else 0.0
+    payment = annuity_payment(amount, rate_from or 15.0, term_months) if product['type'] in ('term_loan', 'line', 'revolving') else 0
     load = (client.existing_monthly_debt + payment) / operating if operating > 0 else 10.0
 
     z = (

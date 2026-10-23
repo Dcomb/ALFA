@@ -67,7 +67,7 @@ def verified_profile(client, application, answers, today):
 
 def option(product, rate, term, amount, requested, requested_term, changes=None, security=None, asset_id=None):
     payment = None
-    if product["type"] in LOAN_TYPES and product["id"] != "overdraft":
+    if product["type"] in LOAN_TYPES + ("leasing",) and product["id"] != "overdraft":
         payment = calc.annuity_payment(amount, rate, term)
 
     texts = list(changes or [])
@@ -114,6 +114,12 @@ def unsecured_options(application, product, offer, rate):
     return options[:POLICY.concessions.max_variants]
 
 
+def monthly_cost(product, amount, rate, term):
+    if product["type"] == "guarantee":
+        return calc.guarantee_cost(amount, rate or 0, term) / term
+    return calc.annuity_payment(amount, rate or 0, term)
+
+
 def personal_debt_reason(client, answers):
     personal = (answers["bki"][1] or {}).get("personal_monthly_payment", 0)
     if client.legal_form == "ip" and personal > 0:
@@ -148,14 +154,38 @@ def decide(client, application, answers, today=None):
 
     offer, _ = built
     rate = offer["rate"] if offer["rate"] is not None else product.get("rate_from")
+
+    reference_rate = POLICY.affordability.reference_rate
+
+    if product["type"] == "leasing":
+        rate = reference_rate
+        cap = calc.max_loan_amount(profile, rate, application.term_months)
+        if cap <= 0:
+            return DecisionResult(outcome="declined", reasons=["лизинговый платёж не укладывается в денежный поток"] + notes)
+        offer = {**offer, "rate": rate, "term_months": application.term_months,
+                 "amount": min(application.amount, cap), "max_amount": round(cap, 2), "alternatives": []}
+        notes.append(f"платёж по лизингу оценён по средней ставке кредитов МСП: {rate}% годовых")
+
+    if product["type"] == "guarantee":
+        cap = calc.max_loan_amount(profile, reference_rate, application.term_months)
+        if cap <= 0:
+            return DecisionResult(
+                outcome="declined",
+                reasons=["денежного потока не хватит, чтобы вернуть банку сумму гарантии, если её предъявят к оплате"] + notes,
+            )
+        offer = {**offer, "term_months": application.term_months,
+                 "amount": min(application.amount, cap), "max_amount": round(cap, 2), "alternatives": []}
+        notes.append("сумма гарантии ограничена тем, что вы смогли бы вернуть банку, если гарантию предъявят к оплате")
+
+    scored_amount = offer["amount"] or application.amount
     features = scoring.features_from(
         answers, profile.business_age_months, profile.monthly_revenue, profile.monthly_expenses,
-        application.amount, rate or 0, offer["term_months"],
+        monthly_cost(product, scored_amount, rate, offer["term_months"]),
     )
     result = scoring.score(features)
     cls = risk_class(result.pd)
     factors = [vars(f) for f in result.factors]
-    adverse = [f.text for f in result.factors if f.impact > 0][:3]
+    adverse = [f.text for f in result.factors if f.points >= POLICY.explanation.min_factor_points][:3]
     summary = f"класс риска {cls}: вероятность дефолта {result.pd:.1%}"
     base = dict(pd=result.pd, risk_class=cls, model_version=result.model_version, factors=factors)
 

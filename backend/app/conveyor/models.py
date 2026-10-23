@@ -61,6 +61,7 @@ class Application(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
+    client: Mapped[Client] = relationship()
     history: Mapped[list["StatusChange"]] = relationship(order_by="StatusChange.id")
     sources: Mapped[list["SourceResponse"]] = relationship(order_by="SourceResponse.id")
     checks: Mapped[list["Check"]] = relationship(order_by="Check.id")
