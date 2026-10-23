@@ -4,24 +4,15 @@ from . import calculator as calc
 from .catalog import load_catalog, products
 from .schemas import Change, Concession, Need, Option, Recommendation, Rejected, RecommendResponse
 from .scoring_stub import get_score
+from app.policy import POLICY
 
-DEFAULT_TERM = 36
-FIT_MATCH = 0.6
-MAX_CHANGES = 2
-MAX_CONCESSIONS = 3
-CLEAN_HISTORY_MONTHS = 6
+DEFAULT_TERM = POLICY.default_term_months
+FIT_MATCH = POLICY.concessions.fit_match
+MAX_CHANGES = POLICY.concessions.max_changes
+MAX_CONCESSIONS = POLICY.concessions.max_variants
+CLEAN_HISTORY_MONTHS = POLICY.concessions.clean_history_months
 LOAN_TYPES = ('term_loan', 'line', 'revolving')
-COLLATERAL_REQUIRED = {'loan_secured', 'credit_line_secured', 'credit_line_nonrevolving_secured'}
-SPECIAL_PURPOSE = {'vehicle', 'real_estate', 'tender', 'refinancing'}
-
-PRODUCT_NOTES = {
-    'overdraft': 'транш до 60 дней, гасится автоматически из поступлений на счет',
-    'credit_line_unsecured': 'проценты только на выбранную сумму, можно брать траншами',
-    'msp_state_support': 'без залога за счет поручительства Корпорации МСП',
-    'leasing': 'аванс от 5%, техника на балансе лизингодателя',
-    'business_credit_card': '60 дней без процентов',
-    'bank_guarantee': 'обеспечение для 44-ФЗ, 223-ФЗ и коммерческих тендеров',
-}
+SPECIAL_PURPOSE = set(POLICY.need_match.special_purposes)
 
 
 def rub(x):
@@ -41,7 +32,7 @@ def eligibility_problems(client, product, need=None):
     owner_age = product.get('owner_age')
     if owner_age and client.owner_age is not None and not owner_age[0] <= client.owner_age <= owner_age[1]:
         problems.append((f'возраст владельца вне диапазона {owner_age[0]}-{owner_age[1]}', None, ('immutable', None)))
-    if product['id'] in COLLATERAL_REQUIRED and not client.has_collateral:
+    if product.get('requires_own_collateral') and not client.has_collateral:
         if need and need.amount:
             hint = f'для {rub(need.amount)} нужен залог стоимостью от {rub(need.amount / calc.COLLATERAL_LTV)}'
         else:
@@ -94,18 +85,19 @@ def amount_bounds(product):
 def need_match(product, need):
     tags = product['need_tags']
     if need is None or need.purpose is None:
-        return 0.1 if SPECIAL_PURPOSE & set(tags) else 0.5
+        weights = POLICY.need_match
+        return weights.unknown_purpose_special if SPECIAL_PURPOSE & set(tags) else weights.unknown_purpose
     if need.purpose in tags:
-        return 1.0
+        return POLICY.need_match.exact
     if 'any' in tags:
-        return 0.6
-    return 0.1
+        return POLICY.need_match.any_purpose
+    return POLICY.need_match.mismatch
 
 
 def loan_cap(client, product, rate, term):
     _, amax = amount_bounds(product)
     cap = min(amax, calc.max_loan_amount(client, rate, term))
-    if product['id'] in COLLATERAL_REQUIRED:
+    if product.get('requires_own_collateral'):
         cap = min(cap, calc.collateral_cap(client))
     return cap
 
@@ -132,7 +124,7 @@ def term_warnings(product, need, term):
 
 def cash_flow_problem(client, product, amin, rate):
     collateral = calc.collateral_cap(client)
-    if product['id'] in COLLATERAL_REQUIRED and collateral < amin:
+    if product.get('requires_own_collateral') and collateral < amin:
         return (
             f'залог покрывает {rub(collateral)}, минимум продукта {rub(amin)}',
             f'нужен залог стоимостью от {rub(amin / calc.COLLATERAL_LTV)}',
@@ -257,8 +249,8 @@ def make_recommendation(product, need, offer, score):
     if offer['monthly_payment']:
         suffix = '' if need and need.amount else ' при максимальной сумме'
         reasons.append(f'платеж {rub(offer["monthly_payment"])} в месяц{suffix}')
-    if product['id'] in PRODUCT_NOTES:
-        reasons.append(PRODUCT_NOTES[product['id']])
+    if product.get('highlight'):
+        reasons.append(product['highlight'])
     reasons.extend(offer['notes'])
 
     return Recommendation(
@@ -293,7 +285,7 @@ def apply_fixes(client, product, need, fixes):
         if kind == 'account':
             update['has_alfa_account'] = True
             changes.append(Change(kind='account', text='открыть расчетный счет в Альфа-Банке'))
-    if product['id'] in COLLATERAL_REQUIRED:
+    if product.get('requires_own_collateral'):
         amin, _ = amount_bounds(product)
         needed = max(need.amount if need and need.amount else 0.0, amin) / calc.COLLATERAL_LTV
         if not client.has_collateral or client.collateral_value < needed:

@@ -3,8 +3,6 @@ import math
 from .calculator import annuity_payment
 from .schemas import ScoreResponse
 
-RISK_PREMIUM = 6.0
-
 
 def _sigmoid(z):
     return 1 / (1 + math.exp(-z))
@@ -24,5 +22,5 @@ def get_score(client, product, amount, term_months):
         + 0.5 * client.has_alfa_account
     )
     p = _sigmoid(z)
-    rate = round(rate_from + RISK_PREMIUM * (1 - p), 2) if rate_from is not None else None
+    rate = rate_from
     return ScoreResponse(product_id=product['id'], approval_prob=round(p, 4), rate=rate, stub=True)

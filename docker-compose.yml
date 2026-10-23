@@ -55,6 +55,12 @@ services:
       db:
         condition: service_healthy
 
+  external:
+    build: ./external
+    container_name: alfa-external
+    ports:
+      - "127.0.0.1:8100:8100"
+
 volumes:
   postgres_data:
   pgadmin_data:

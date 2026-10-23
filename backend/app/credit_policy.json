@@ -1,0 +1,33 @@
+{
+  "default_term_months": 36,
+  "affordability": {
+    "dscr": 1.25,
+    "overdraft_turnover_share": 0.3,
+    "collateral_ltv": 0.5
+  },
+  "need_match": {
+    "exact": 1.0,
+    "any_purpose": 0.6,
+    "unknown_purpose": 0.5,
+    "unknown_purpose_special": 0.1,
+    "mismatch": 0.1,
+    "special_purposes": ["vehicle", "real_estate", "tender", "refinancing"]
+  },
+  "concessions": {
+    "fit_match": 0.6,
+    "max_changes": 2,
+    "max_variants": 3,
+    "clean_history_months": 6
+  },
+  "risk_classes": {
+    "A": 0.02,
+    "B": 0.05,
+    "C": 0.12
+  },
+  "verification": {
+    "revenue_tolerance": 0.3,
+    "debt_tolerance": 0.1,
+    "max_current_overdue_days": 30,
+    "max_info_rounds": 2
+  }
+}

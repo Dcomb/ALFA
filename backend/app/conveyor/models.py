@@ -63,7 +63,22 @@ class Application(Base):
 
     history: Mapped[list["StatusChange"]] = relationship(order_by="StatusChange.id")
     sources: Mapped[list["SourceResponse"]] = relationship(order_by="SourceResponse.id")
+    checks: Mapped[list["Check"]] = relationship(order_by="Check.id")
     decisions: Mapped[list["Decision"]] = relationship(order_by="Decision.id")
+
+    @property
+    def decision(self):
+        return self.decisions[-1] if self.decisions else None
+
+    @property
+    def issues(self):
+        if not self.checks:
+            return []
+        last_round = self.checks[-1].round
+        return [
+            check.message for check in self.checks
+            if check.round == last_round and check.kind in ("stop_factor", "discrepancy")
+        ]
 
 
 class StatusChange(Base):
@@ -87,6 +102,19 @@ class SourceResponse(Base):
     status: Mapped[str] = mapped_column(String(16))
     payload: Mapped[dict | None] = mapped_column(JSON)
     duration_ms: Mapped[int]
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Check(Base):
+    __tablename__ = "conveyor_checks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("conveyor_applications.id"), index=True)
+    round: Mapped[int]
+    kind: Mapped[str] = mapped_column(String(16))
+    code: Mapped[str] = mapped_column(String(32))
+    message: Mapped[str]
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

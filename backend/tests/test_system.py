@@ -43,17 +43,32 @@ VALID_REQUESTS = {
     ("GET", "/clients"): None,
     ("GET", "/me"): None,
     ("GET", "/applications"): None,
+    ("POST", "/applications"): {
+        "product_id": "loan_any_purpose",
+        "amount": 1000000,
+        "term_months": 24,
+        "purpose": "working_capital",
+        "declared_revenue": 1200000,
+        "declared_expenses": 950000,
+        "bki_consent": True,
+    },
     ("GET", "/applications/{application_id}"): None,
+    ("PATCH", "/applications/{application_id}"): {"amount": 500000},
+    ("POST", "/applications/{application_id}/submit"): None,
+    ("POST", "/applications/{application_id}/withdraw"): None,
+    ("POST", "/applications/{application_id}/process"): None,
+    ("GET", "/applications/{application_id}/processing"): None,
+    ("POST", "/applications/{application_id}/accept"): {"option": 0},
+    ("POST", "/applications/{application_id}/decline-offer"): None,
 }
 
 CLIENT_HEADERS = {"X-Client-Id": "demo_cafe"}
 
-PATH_SAMPLES = {
-    "/applications/{application_id}": "/applications/999999",
-}
-
 EXPECTED_STATUS = {
-    ("GET", "/applications/{application_id}"): 404,
+    ("POST", "/applications"): 201,
+    ("POST", "/applications/{application_id}/process"): 409,
+    ("POST", "/applications/{application_id}/accept"): 409,
+    ("POST", "/applications/{application_id}/decline-offer"): 409,
 }
 
 NEEDS_OLLAMA = {("POST", "/chat")}
@@ -66,7 +81,10 @@ ROUTES = sorted(
     for path, item in (SPEC or {}).get("paths", {}).items()
     for method in item
 )
-POST_ROUTES = [route for route in ROUTES if route[0] == "POST"]
+POST_ROUTES = [
+    route for route in ROUTES
+    if route[0] == "POST" and "requestBody" in SPEC["paths"][route[1]]["post"]
+]
 
 
 def ollama_up():
@@ -76,8 +94,20 @@ def ollama_up():
         return False
 
 
+def new_application_id():
+    response = httpx.post(
+        f"{API_URL}/applications",
+        json=VALID_REQUESTS[("POST", "/applications")],
+        headers=CLIENT_HEADERS,
+        timeout=10,
+    )
+    return response.json()["id"]
+
+
 def url(path):
-    return f"{API_URL}{PATH_SAMPLES.get(path, path)}"
+    if "{application_id}" in path:
+        path = path.replace("{application_id}", str(new_application_id()))
+    return f"{API_URL}{path}"
 
 
 def call(method, path, body=None):
@@ -139,3 +169,75 @@ def test_recommend_contract():
         assert rec["reasons"]
     for rejected in data["rejected"]:
         assert rejected["reason"]
+
+
+def submit_as(client_id, **fields):
+    headers = {"X-Client-Id": client_id}
+    created = httpx.post(
+        f"{API_URL}/applications",
+        json={**VALID_REQUESTS[("POST", "/applications")], "applicant_role": "director", **fields},
+        headers=headers,
+        timeout=10,
+    ).json()
+    return httpx.post(f"{API_URL}/applications/{created['id']}/submit", headers=headers, timeout=60).json()
+
+
+def test_submit_queries_external_sources():
+    application = submit_as("demo_cafe")
+    statuses = {s["source"]: s["status"] for s in application["sources"]}
+    assert application["status"] == "approved"
+    assert statuses == {"egrul": "ok", "fns": "ok", "girbo": "not_found", "bank": "ok", "bki": "ok"}
+
+
+def test_unavailable_source_does_not_break_application():
+    application = submit_as("demo_unstable_bki")
+    statuses = {s["source"]: s["status"] for s in application["sources"]}
+    assert application["status"] == "checking"
+    assert statuses["bki"] == "error"
+    assert statuses["egrul"] == "ok"
+
+
+@pytest.mark.parametrize("client_id", ["demo_liquidated", "demo_overdue", "demo_disqualified"])
+def test_stop_factors_decline(client_id):
+    application = submit_as(client_id)
+    assert application["status"] == "declined"
+    assert application["issues"]
+
+
+def test_overstated_revenue_needs_info():
+    application = submit_as("demo_cafe", declared_revenue=3000000)
+    assert application["status"] == "needs_info"
+    assert application["issues"]
+
+
+def test_processing_journal_shows_external_answers():
+    application = submit_as("demo_logistics")
+    processing = httpx.get(
+        f"{API_URL}/applications/{application['id']}/processing",
+        headers={"X-Client-Id": "demo_logistics"},
+        timeout=10,
+    ).json()
+    egrul = next(s for s in processing["sources"] if s["source"] == "egrul")
+    assert egrul["payload"]["legal_form"] == "OOO"
+    assert processing["checks"]
+
+
+def test_gray_zone_ip_gets_msp_guarantee_offer():
+    application = submit_as("demo_gray", declared_revenue=1100000, declared_expenses=800000)
+    assert application["status"] == "counteroffer"
+    assert application["decision"]["options"][0]["security"] == "msp_guarantee"
+
+
+def test_gray_zone_ooo_gets_collateral_offer_and_accepts():
+    application = submit_as("demo_gray_ooo", declared_revenue=2500000, declared_expenses=1900000)
+    assert application["status"] == "counteroffer"
+    assert application["decision"]["options"][0]["security"] == "collateral"
+
+    accepted = httpx.post(
+        f"{API_URL}/applications/{application['id']}/accept",
+        json={"option": 0},
+        headers={"X-Client-Id": "demo_gray_ooo"},
+        timeout=10,
+    ).json()
+    assert accepted["status"] == "approved"
+    assert accepted["collateral_asset_id"] is not None

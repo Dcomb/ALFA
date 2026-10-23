@@ -1,6 +1,8 @@
-DSCR = 1.25
-OVERDRAFT_TURNOVER_SHARE = 0.3
-COLLATERAL_LTV = 0.5
+from app.policy import POLICY
+
+DSCR = POLICY.affordability.dscr
+OVERDRAFT_TURNOVER_SHARE = POLICY.affordability.overdraft_turnover_share
+COLLATERAL_LTV = POLICY.affordability.collateral_ltv
 
 
 def annuity_payment(principal, annual_rate, months):

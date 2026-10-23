@@ -1,18 +1,30 @@
+import logging
 import os
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.shemas import ChatResponse, ChatRequest
 from app.agent.graph import build_graph
+from app.conveyor import lifecycle
 from app.conveyor import models as conveyor_models
 from app.conveyor.auth import current_client, own_application
 from app.conveyor.db import get_session, init_db
-from app.conveyor.schemas import ApplicationBrief, ApplicationOut, ClientBrief, ClientOut
+from app.conveyor.schemas import (
+    AcceptOffer,
+    ApplicationBrief,
+    ApplicationCreate,
+    ApplicationOut,
+    ApplicationUpdate,
+    ClientBrief,
+    ClientOut,
+    ProcessingOut,
+)
 from app.ranking import calculator as calc
 from app.ranking.catalog import products
 from app.ranking.clients import get_client
@@ -25,6 +37,9 @@ from app.ranking.schemas import (
     RecommendRequest,
     RecommendResponse,
 )
+
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 
 @asynccontextmanager
@@ -48,6 +63,14 @@ app = FastAPI(
     title="ALFA API",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(lifecycle.ConveyorError)
+def conveyor_error(request: Request, error: lifecycle.ConveyorError):
+    return JSONResponse(
+        status_code=error.status_code,
+        content={"detail": error.message, **error.details},
+    )
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -144,8 +167,78 @@ def list_applications(
     ).all()
 
 
+@app.post("/applications", response_model=ApplicationOut, status_code=201)
+def create_application(
+    request: ApplicationCreate,
+    client: conveyor_models.Client = Depends(current_client),
+    session: Session = Depends(get_session),
+):
+    return lifecycle.create(session, client, request.model_dump(exclude_none=True))
+
+
 @app.get("/applications/{application_id}", response_model=ApplicationOut)
 def get_application(
     application: conveyor_models.Application = Depends(own_application),
 ):
     return application
+
+
+@app.get("/applications/{application_id}/processing", response_model=ProcessingOut)
+def get_processing(
+    application: conveyor_models.Application = Depends(own_application),
+):
+    return application
+
+
+@app.patch("/applications/{application_id}", response_model=ApplicationOut)
+def update_application(
+    request: ApplicationUpdate,
+    application: conveyor_models.Application = Depends(own_application),
+    client: conveyor_models.Client = Depends(current_client),
+    session: Session = Depends(get_session),
+):
+    return lifecycle.update(session, client, application, request.model_dump(exclude_unset=True))
+
+
+@app.post("/applications/{application_id}/submit", response_model=ApplicationOut)
+def submit_application(
+    application: conveyor_models.Application = Depends(own_application),
+    client: conveyor_models.Client = Depends(current_client),
+    session: Session = Depends(get_session),
+):
+    lifecycle.submit(session, client, application)
+    return lifecycle.run_checks(session, client, application)
+
+
+@app.post("/applications/{application_id}/process", response_model=ApplicationOut)
+def process_application(
+    application: conveyor_models.Application = Depends(own_application),
+    client: conveyor_models.Client = Depends(current_client),
+    session: Session = Depends(get_session),
+):
+    return lifecycle.run_checks(session, client, application)
+
+
+@app.post("/applications/{application_id}/accept", response_model=ApplicationOut)
+def accept_offer(
+    request: AcceptOffer,
+    application: conveyor_models.Application = Depends(own_application),
+    session: Session = Depends(get_session),
+):
+    return lifecycle.accept_offer(session, application, request.option)
+
+
+@app.post("/applications/{application_id}/decline-offer", response_model=ApplicationOut)
+def decline_offer(
+    application: conveyor_models.Application = Depends(own_application),
+    session: Session = Depends(get_session),
+):
+    return lifecycle.decline_offer(session, application)
+
+
+@app.post("/applications/{application_id}/withdraw", response_model=ApplicationOut)
+def withdraw_application(
+    application: conveyor_models.Application = Depends(own_application),
+    session: Session = Depends(get_session),
+):
+    return lifecycle.withdraw(session, application)

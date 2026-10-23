@@ -66,6 +66,7 @@
   "products": [
     {
       "id": "overdraft",
+      "highlight": "транш до 60 дней, гасится автоматически из поступлений на счет",
       "name": "Овердрафт",
       "type": "revolving",
       "purposes": [
@@ -98,6 +99,7 @@
     },
     {
       "id": "credit_line_unsecured",
+      "highlight": "проценты только на выбранную сумму, можно брать траншами",
       "name": "Возобновляемая кредитная линия без залога",
       "type": "revolving",
       "purposes": [
@@ -124,6 +126,7 @@
     },
     {
       "id": "credit_line_secured",
+      "requires_own_collateral": true,
       "name": "Возобновляемая кредитная линия с залогом",
       "type": "revolving",
       "purposes": [
@@ -148,6 +151,7 @@
     },
     {
       "id": "credit_line_nonrevolving_secured",
+      "requires_own_collateral": true,
       "name": "Невозобновляемая кредитная линия с залогом",
       "type": "line",
       "purposes": [
@@ -201,6 +205,7 @@
     },
     {
       "id": "loan_secured",
+      "requires_own_collateral": true,
       "name": "Кредит одной суммой с залогом",
       "type": "term_loan",
       "purposes": [
@@ -250,6 +255,7 @@
     },
     {
       "id": "msp_state_support",
+      "highlight": "без залога за счет поручительства Корпорации МСП",
       "name": "Кредит с господдержкой (зонтичное поручительство Корпорации МСП)",
       "type": "term_loan",
       "purposes": [
@@ -333,6 +339,7 @@
     },
     {
       "id": "leasing",
+      "highlight": "аванс от 5%, техника на балансе лизингодателя",
       "name": "Лизинг (Альфа-Лизинг)",
       "type": "leasing",
       "purposes": [
@@ -356,6 +363,7 @@
     },
     {
       "id": "business_credit_card",
+      "highlight": "60 дней без процентов",
       "name": "Кредитная бизнес-карта",
       "type": "card",
       "purposes": [
@@ -383,6 +391,7 @@
     },
     {
       "id": "bank_guarantee",
+      "highlight": "обеспечение для 44-ФЗ, 223-ФЗ и коммерческих тендеров",
       "name": "Банковская гарантия",
       "type": "guarantee",
       "purposes": [
