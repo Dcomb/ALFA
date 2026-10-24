@@ -291,24 +291,24 @@
       "mass_address_flag": 0,
       "disqualified_person_flag": 0,
       "tax_arrears_flag": 0,
-      "court_cases_12m": 0
+      "court_cases_12m": 2
     },
     "bank": {
       "avg_monthly_account_turnover": 1100000,
       "turnover_trend_6m": 0,
       "revenue_seasonality_cv": 0.2,
-      "neg_balance_days_share_12m": 0.05
+      "neg_balance_days_share_12m": 0.35
     },
     "bki": {
       "bki_active_loans": 2,
       "existing_debt_total": 600000,
       "existing_monthly_payment": 30000,
       "current_overdue_days": 0,
-      "bki_max_overdue_days_24m": 25,
+      "bki_max_overdue_days_24m": 45,
       "bki_overdue_90_24m": 0,
       "bki_inquiries_6m": 6,
       "bki_history_months": 36,
-      "bki_score": 560,
+      "bki_score": 470,
       "personal_monthly_payment": 15000
     }
   },
@@ -329,7 +329,7 @@
       "mass_address_flag": 0,
       "disqualified_person_flag": 0,
       "tax_arrears_flag": 0,
-      "court_cases_12m": 0
+      "court_cases_12m": 2
     },
     "girbo": {
       "year": 2025,
@@ -343,18 +343,18 @@
       "avg_monthly_account_turnover": 2500000,
       "turnover_trend_6m": 0,
       "revenue_seasonality_cv": 0.15,
-      "neg_balance_days_share_12m": 0.03
+      "neg_balance_days_share_12m": 0.35
     },
     "bki": {
       "bki_active_loans": 2,
       "existing_debt_total": 600000,
       "existing_monthly_payment": 30000,
       "current_overdue_days": 0,
-      "bki_max_overdue_days_24m": 25,
+      "bki_max_overdue_days_24m": 45,
       "bki_overdue_90_24m": 0,
       "bki_inquiries_6m": 6,
       "bki_history_months": 36,
-      "bki_score": 560
+      "bki_score": 470
     }
   }
 }

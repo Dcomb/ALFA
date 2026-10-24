@@ -11,6 +11,7 @@ from app.conveyor.db import Base, SessionLocal, init_db, make_engine
 from app.conveyor.demo import DEMO_CLIENTS
 from app.conveyor.models import Application, Client
 from app.main import app
+from app.scoring.inference import MODEL_VERSION
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql://alfa:alfa@localhost:5432/alfa_test")
 
@@ -508,24 +509,47 @@ def test_months_between():
     assert months_between(date(2025, 8, 25), date(2026, 10, 23)) == 13
 
 
-GRAY_BKI = {"bki_inquiries_6m": 6, "bki_max_overdue_days_24m": 25, "bki_score": 560}
-HEAVY_BKI = {"bki_inquiries_6m": 10, "bki_max_overdue_days_24m": 60, "bki_overdue_90_24m": 2, "bki_score": 480}
+GRAY = {
+    "bki": {"bki_max_overdue_days_24m": 45, "bki_score": 450},
+    "bank": {"neg_balance_days_share_12m": 0.4},
+    "fns": {"court_cases_12m": 2},
+}
+HEAVY = {
+    "bki": {"bki_max_overdue_days_24m": 90, "bki_score": 420},
+    "bank": {"neg_balance_days_share_12m": 0.5},
+    "fns": {"tax_arrears_flag": 1, "court_cases_12m": 3},
+}
 
 
 def test_scoring_is_monotonic():
-    from app.conveyor.scoring import score
+    from app.scoring.inference import MODEL_VERSION, score
 
     base = {
-        "max_overdue_days_24m": 0, "overdue_90_24m": 0, "inquiries_6m": 0, "bki_score": 600,
-        "existing_monthly_payment": 0, "new_monthly_payment": 50000, "business_age_months": 24,
-        "monthly_revenue": 1200000, "monthly_expenses": 950000,
-        "tax_arrears": 0, "mass_address": 0, "court_cases_12m": 0,
+        "business_age_months": 24, "revenue_12m": 14400000, "net_profit_12m": 3000000,
+        "existing_monthly_payment": 0, "monthly_payment_rub": 50000, "existing_debt_total": 0,
+        "bki_score": 640, "bki_max_overdue_days_24m": 0, "neg_balance_days_share_12m": 0.03,
+        "court_cases_12m": 0, "tax_arrears_flag": 0, "mass_address_flag": 0,
+        "amount_rub": 1500000, "collateral_value_rub": 0,
     }
     clean = score(base)
-    worse = score({**base, "max_overdue_days_24m": 40, "tax_arrears": 1})
-    assert worse.pd > clean.pd
-    assert worse.factors[0].impact > 0
-    assert clean.model_version == "expert-scorecard"
+    worse = score({**base, "bki_max_overdue_days_24m": 40, "tax_arrears_flag": 1})
+    secured = score({**base, "collateral_value_rub": 3000000})
+    assert worse.pd > clean.pd > secured.pd
+    assert {f.name for f in worse.factors if f.impact > 0} >= {"log_max_overdue", "tax_arrears_flag"}
+    assert clean.model_version == MODEL_VERSION
+
+
+def test_scoring_imputes_missing_sources():
+    from app.scoring.inference import score
+
+    result = score({
+        "business_age_months": 24, "revenue_12m": 14400000, "net_profit_12m": 3000000,
+        "existing_monthly_payment": 0, "monthly_payment_rub": 50000, "existing_debt_total": 0,
+        "tax_arrears_flag": 0, "mass_address_flag": 0, "amount_rub": 1500000,
+    })
+    texts = [f.text for f in result.factors]
+    assert 0 < result.pd < 1
+    assert "нет скорингового балла БКИ" in texts
 
 
 def test_risk_class_thresholds():
@@ -554,25 +578,29 @@ def test_amount_above_cash_flow_gives_counteroffer():
 
 
 def test_gray_zone_without_assets_offers_msp_guarantee():
-    OVERRIDES["bki"] = GRAY_BKI
+    OVERRIDES.update(GRAY)
     application = submit()
     assert application["status"] == "counteroffer"
     assert [o["security"] for o in application["decision"]["options"]] == ["msp_guarantee"]
 
 
 def test_gray_zone_with_assets_offers_collateral():
-    OVERRIDES["bki"] = GRAY_BKI
-    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 7900000}
+    OVERRIDES.update(GRAY)
+    OVERRIDES["bank"] = {**GRAY["bank"], "avg_monthly_account_turnover": 7900000}
     application = submit(headers=LOGISTICS, applicant_role="director", declared_revenue=8000000, declared_expenses=6500000)
     OVERRIDES.clear()
     securities = [o["security"] for o in application["decision"]["options"]]
     assert application["status"] == "counteroffer"
     assert securities[0] == "collateral"
     assert "msp_guarantee" in securities
+    secured = application["decision"]["options"][0]
+    processing = client.get(f"/applications/{application['id']}/processing", headers=LOGISTICS).json()
+    assert secured["pd"] < processing["decisions"][0]["pd"]
+    assert any(change.startswith("с залогом класс риска") for change in secured["changes"])
 
 
 def test_high_risk_is_declined_with_factors():
-    OVERRIDES["bki"] = HEAVY_BKI
+    OVERRIDES.update(HEAVY)
     application = submit()
     assert application["status"] == "declined"
     assert "класс риска D" in application["decision"]["reasons"][0]
@@ -588,8 +616,8 @@ def test_accept_counteroffer():
 
 
 def test_accept_collateral_option_sets_asset():
-    OVERRIDES["bki"] = GRAY_BKI
-    OVERRIDES["bank"] = {"avg_monthly_account_turnover": 7900000}
+    OVERRIDES.update(GRAY)
+    OVERRIDES["bank"] = {**GRAY["bank"], "avg_monthly_account_turnover": 7900000}
     application = submit(headers=LOGISTICS, applicant_role="director", declared_revenue=8000000, declared_expenses=6500000)
     response = client.post(f"/applications/{application['id']}/accept", json={"option": 0}, headers=LOGISTICS)
     assert response.json()["collateral_asset_id"] == application["decision"]["options"][0]["asset_id"]
@@ -624,7 +652,7 @@ def test_processing_journal_shows_scoring():
     processing = client.get(f"/applications/{application['id']}/processing", headers=CAFE).json()
     decision = processing["decisions"][0]
     assert decision["risk_class"] in {"A", "B"}
-    assert decision["model_version"] == "expert-scorecard"
+    assert decision["model_version"] == MODEL_VERSION
     assert decision["factors"]
 
 
@@ -658,10 +686,13 @@ def test_guarantee_is_scored_by_commission():
 
 
 def test_minor_factors_are_not_reasons():
-    OVERRIDES["bki"] = {"bki_max_overdue_days_24m": 60, "bki_overdue_90_24m": 2, "bki_inquiries_6m": 1}
+    OVERRIDES.update(HEAVY)
     application = submit()
+    processing = client.get(f"/applications/{application['id']}/processing", headers=CAFE).json()
+    minor = {f["text"] for f in processing["decisions"][0]["factors"] if f["points"] < 0.25}
     assert application["status"] == "declined"
-    assert not any("запросов в другие банки" in reason for reason in application["decision"]["reasons"])
+    assert minor
+    assert not minor & set(application["decision"]["reasons"])
 
 
 def test_guarantee_is_limited_by_reimbursement_capacity():
