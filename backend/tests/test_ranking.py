@@ -257,3 +257,27 @@ def test_rejected_lists_all_reasons():
     d = recommend_all(NEWBIE, {'purpose': 'investment'})
     secured = next(x for x in d['rejected'] if x['product_id'] == 'loan_secured')
     assert 'бизнесу' in secured['reason'] and 'нужен залог' in secured['reason']
+
+
+def test_leasing_payment_fits_cash_flow():
+    data = recommend_all(CAFE, {'purpose': 'vehicle', 'amount': 20000000})
+    leasing = next(r for r in data['recommendations'] if r['product_id'] == 'leasing')
+    assert leasing['rate'] == 25
+    assert leasing['amount'] < 20000000
+    assert leasing['monthly_payment'] <= calc.max_monthly_payment(get_client('demo_cafe')) + 1
+    assert 12 <= leasing['term_months'] <= 59
+
+
+def test_recommendation_shows_risk_class():
+    data = recommend_all(CAFE, {'purpose': 'cash_gap'})
+    for rec in data['recommendations']:
+        assert rec['risk_class'] in 'ABCD'
+        assert any(reason.startswith('предварительная оценка риска') for reason in rec['reasons'])
+
+
+def test_declared_delinquency_raises_risk():
+    clean = recommend_all(CAFE, {'purpose': 'working_capital', 'amount': 1000000})
+    late = recommend_all({**CAFE, 'delinquency_180d': True}, {'purpose': 'working_capital', 'amount': 1000000})
+    pd = {r['product_id']: r['pd'] for r in clean['recommendations']}
+    assert all(r['pd'] > pd[r['product_id']] for r in late['recommendations'] if r['product_id'] in pd)
+

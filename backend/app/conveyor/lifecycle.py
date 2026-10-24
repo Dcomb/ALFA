@@ -12,6 +12,7 @@ TRANSITIONS = {
     ("checking", "needs_info"): "system",
     ("checking", "declined"): "system",
     ("checking", "scoring"): "system",
+    ("checking", "withdrawn"): "client",
     ("needs_info", "submitted"): "client",
     ("needs_info", "declined"): "system",
     ("needs_info", "withdrawn"): "client",
@@ -229,6 +230,11 @@ def decline_offer(session, application):
     return application
 
 
+def decline(session, application, reasons):
+    application.decisions.append(Decision(outcome="declined", reasons=reasons))
+    transition(session, application, "declined", "system", "; ".join(reasons))
+
+
 def latest_answers(application):
     answers = {}
     for response in application.sources:
@@ -253,12 +259,9 @@ def evaluate(session, client, application, answers):
     discrepancies = [f.message for f in findings if f.kind == "discrepancy"]
 
     if stops:
-        transition(session, application, "declined", "system", "; ".join(stops))
+        decline(session, application, stops)
     elif discrepancies and application.info_rounds >= MAX_INFO_ROUNDS:
-        transition(
-            session, application, "declined", "system",
-            "не удалось подтвердить данные: " + "; ".join(discrepancies),
-        )
+        decline(session, application, ["не удалось подтвердить данные"] + discrepancies)
     elif discrepancies:
         application.info_rounds += 1
         transition(session, application, "needs_info", "system", "; ".join(discrepancies))

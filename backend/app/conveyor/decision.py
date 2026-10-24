@@ -5,8 +5,9 @@ from app.policy import POLICY
 from app.ranking import calculator as calc
 from app.ranking.catalog import get_product
 from app.ranking.engine import LOAN_TYPES, build_offer, eligibility_problems, rub
+from app.ranking import risk
 from app.ranking.schemas import ClientProfile, Need
-from app.scoring.inference import score
+from app.scoring.inference import risk_class, score
 
 from .verification import months_between
 
@@ -26,17 +27,6 @@ class DecisionResult:
     reasons: list[str] = field(default_factory=list)
     factors: list[dict] = field(default_factory=list)
     options: list[dict] = field(default_factory=list)
-
-
-def risk_class(pd):
-    bounds = POLICY.risk_classes
-    if pd < bounds.A:
-        return "A"
-    if pd < bounds.B:
-        return "B"
-    if pd < bounds.C:
-        return "C"
-    return "D"
 
 
 def verified_finances(application, answers):
@@ -67,7 +57,7 @@ def verified_profile(client, application, answers, today):
 
 def option(product, rate, term, amount, requested, requested_term, changes=None, security=None, asset_id=None):
     payment = None
-    if product["type"] in LOAN_TYPES + ("leasing",) and product["id"] != "overdraft":
+    if product["type"] in LOAN_TYPES and product["id"] != "overdraft":
         payment = calc.annuity_payment(amount, rate, term)
 
     texts = list(changes or [])
@@ -97,7 +87,7 @@ def secured_options(client, application, product, offer, rate, scoring_data):
         amount = min(limit, asset.market_value * calc.COLLATERAL_LTV)
         label = f"залог: {ASSET_NAMES.get(asset.kind, asset.kind)} — {asset.description}, оценка {rub(asset.market_value)}"
         secured = score({**scoring_data, "amount_rub": amount, "collateral_value_rub": asset.market_value,
-                         "monthly_payment_rub": monthly_cost(product, amount, rate, term)})
+                         "monthly_payment_rub": calc.monthly_cost(product, amount, rate, term)})
         options.append({
             **option(product, rate, term, amount, application.amount, application.term_months,
                      [label, f"с залогом класс риска {risk_class(secured.pd)}: вероятность дефолта {secured.pd:.1%}"],
@@ -121,12 +111,6 @@ def unsecured_options(application, product, offer, rate):
     return options[:POLICY.concessions.max_variants]
 
 
-def monthly_cost(product, amount, rate, term):
-    if product["type"] == "guarantee":
-        return calc.guarantee_cost(amount, rate or 0, term) / term
-    return calc.annuity_payment(amount, rate or 0, term)
-
-
 def collateral_value(client, application, profile):
     if profile.has_collateral:
         return profile.collateral_value
@@ -138,11 +122,7 @@ def scoring_input(client, application, answers, profile, amount, payment):
     fns = answers["fns"][1] or {}
     bank = answers["bank"][1] or {}
     return {
-        "business_age_months": profile.business_age_months,
-        "revenue_12m": profile.monthly_revenue * 12,
-        "net_profit_12m": (profile.monthly_revenue - profile.monthly_expenses) * 12,
-        "existing_monthly_payment": profile.existing_monthly_debt,
-        "monthly_payment_rub": payment,
+        **risk.scoring_input(profile, amount, payment, collateral_value(client, application, profile)),
         "existing_debt_total": bki.get("existing_debt_total", 0),
         "bki_score": bki.get("bki_score"),
         "bki_max_overdue_days_24m": bki.get("bki_max_overdue_days_24m", 0),
@@ -150,8 +130,6 @@ def scoring_input(client, application, answers, profile, amount, payment):
         "court_cases_12m": fns.get("court_cases_12m", 0),
         "tax_arrears_flag": fns.get("tax_arrears_flag", 0),
         "mass_address_flag": fns.get("mass_address_flag", 0),
-        "amount_rub": amount,
-        "collateral_value_rub": collateral_value(client, application, profile),
     }
 
 
@@ -192,15 +170,6 @@ def decide(client, application, answers, today=None):
 
     reference_rate = POLICY.affordability.reference_rate
 
-    if product["type"] == "leasing":
-        rate = reference_rate
-        cap = calc.max_loan_amount(profile, rate, application.term_months)
-        if cap <= 0:
-            return DecisionResult(outcome="declined", reasons=["лизинговый платёж не укладывается в денежный поток"] + notes)
-        offer = {**offer, "rate": rate, "term_months": application.term_months,
-                 "amount": min(application.amount, cap), "max_amount": round(cap, 2), "alternatives": []}
-        notes.append(f"платёж по лизингу оценён по средней ставке кредитов МСП: {rate}% годовых")
-
     if product["type"] == "guarantee":
         cap = calc.max_loan_amount(profile, reference_rate, application.term_months)
         if cap <= 0:
@@ -214,7 +183,7 @@ def decide(client, application, answers, today=None):
 
     scored_amount = offer["amount"] or application.amount
     scoring_data = scoring_input(client, application, answers, profile, scored_amount,
-                                 monthly_cost(product, scored_amount, rate, offer["term_months"]))
+                                 calc.monthly_cost(product, scored_amount, rate, offer["term_months"]))
     result = score(scoring_data)
     cls = risk_class(result.pd)
     factors = [vars(f) for f in result.factors]

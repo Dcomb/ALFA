@@ -25,6 +25,10 @@
     "B": 0.05,
     "C": 0.12
   },
+  "risk_weights": {
+    "C": 0.6,
+    "D": 0.1
+  },
   "explanation": {
     "min_factor_points": 0.25
   },

@@ -40,3 +40,10 @@ def test_out_of_range_is_rejected(section, name, value):
     data[section][name] = value
     with pytest.raises(ValidationError):
         Policy.model_validate(data)
+
+
+def test_risk_weight_of_d_above_c_is_rejected():
+    data = raw_policy()
+    data["risk_weights"] = {"C": 0.3, "D": 0.5}
+    with pytest.raises(ValidationError):
+        Policy.model_validate(data)

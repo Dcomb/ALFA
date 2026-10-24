@@ -53,7 +53,8 @@ class Recommendation(BaseModel):
     product_id: str
     name: str
     score: float
-    approval_prob: float
+    pd: float
+    risk_class: Literal['A', 'B', 'C', 'D']
     rate: Optional[float]
     amount: Optional[float]
     max_amount: Optional[float]
@@ -100,13 +101,6 @@ class ScoreRequest(BaseModel):
     product_id: str
     amount: float = Field(gt=0)
     term_months: int = Field(gt=0)
-
-
-class ScoreResponse(BaseModel):
-    product_id: str
-    approval_prob: float
-    rate: Optional[float]
-    stub: bool = True
 
 
 class CalcRequest(BaseModel):

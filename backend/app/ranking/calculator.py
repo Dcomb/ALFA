@@ -60,3 +60,9 @@ def overdraft_cost(limit, annual_rate, tranche_days=60, fee_share=0.01, fee_min=
 
 def guarantee_cost(amount, annual_rate, months):
     return round(amount * annual_rate / 100 * months / 12, 2)
+
+
+def monthly_cost(product, amount, annual_rate, months):
+    if product['type'] == 'guarantee':
+        return guarantee_cost(amount, annual_rate or 0, months) / months
+    return annuity_payment(amount, annual_rate or 0, months)

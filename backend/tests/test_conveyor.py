@@ -417,6 +417,8 @@ def test_current_overdue_is_declined():
     application = submit()
     assert application["status"] == "declined"
     assert "45" in application["issues"][0]
+    assert application["decision"]["outcome"] == "declined"
+    assert "45" in application["decision"]["reasons"][0]
 
 
 def test_small_overdue_is_not_stop_factor():
@@ -460,6 +462,7 @@ def test_third_failed_round_is_declined():
     assert final["status"] == "declined"
     assert final["info_rounds"] == 2
     assert final["history"][-1]["reason"].startswith("не удалось подтвердить данные")
+    assert final["decision"]["reasons"][0] == "не удалось подтвердить данные"
 
 
 def test_hidden_debt_needs_info():
@@ -480,6 +483,14 @@ def test_debt_taken_from_bki_when_not_declared():
 def test_withdraw_from_needs_info():
     OVERRIDES["bank"] = {"avg_monthly_account_turnover": 500000}
     application = submit()
+    response = client.post(f"/applications/{application['id']}/withdraw", headers=CAFE)
+    assert response.json()["status"] == "withdrawn"
+
+
+def test_withdraw_while_source_is_down():
+    FAILURES["bki"] = "error"
+    application = submit()
+    assert application["status"] == "checking"
     response = client.post(f"/applications/{application['id']}/withdraw", headers=CAFE)
     assert response.json()["status"] == "withdrawn"
 
@@ -671,7 +682,7 @@ def test_leasing_is_limited_by_cash_flow():
     assert application["status"] == "counteroffer"
     assert decision["options"][0]["amount"] < 7000000
     assert decision["options"][0]["monthly_payment"] <= limit + 1
-    assert any("лизингу" in reason for reason in decision["reasons"])
+    assert decision["options"][0]["rate"] == 25
 
 
 def test_affordable_leasing_is_approved_with_payment():

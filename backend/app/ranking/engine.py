@@ -3,16 +3,18 @@ import math
 from . import calculator as calc
 from .catalog import load_catalog, products
 from .schemas import Change, Concession, Need, Option, Recommendation, Rejected, RecommendResponse
-from .scoring_stub import get_score
+from .risk import estimate
 from app.policy import POLICY
+from app.scoring.inference import risk_class
 
 DEFAULT_TERM = POLICY.default_term_months
 FIT_MATCH = POLICY.concessions.fit_match
 MAX_CHANGES = POLICY.concessions.max_changes
 MAX_CONCESSIONS = POLICY.concessions.max_variants
 CLEAN_HISTORY_MONTHS = POLICY.concessions.clean_history_months
-LOAN_TYPES = ('term_loan', 'line', 'revolving')
+LOAN_TYPES = ('term_loan', 'line', 'revolving', 'leasing')
 SPECIAL_PURPOSE = set(POLICY.need_match.special_purposes)
+RISK_WEIGHT = {'C': POLICY.risk_weights.C, 'D': POLICY.risk_weights.D}
 
 
 def rub(x):
@@ -72,7 +74,7 @@ def pick_term(product, need):
     if rng is None:
         return need.term_months if need and need.term_months else DEFAULT_TERM
     lo, hi = rng
-    default = min(hi, DEFAULT_TERM) if product['type'] == 'term_loan' else hi
+    default = min(hi, DEFAULT_TERM) if product['type'] in ('term_loan', 'leasing') else hi
     t = need.term_months if need and need.term_months else default
     return min(max(t, lo), hi)
 
@@ -189,8 +191,7 @@ def build_offer(client, product, need):
                 cap = loan_cap(client, product, product['rate_from'], term)
 
         amount = max(min(requested, cap) if requested else cap, amin)
-        score = get_score(client, product, amount, term)
-        rate = score.rate
+        rate = product['rate_from']
 
         if product['id'] == 'overdraft':
             interest, fee = calc.overdraft_cost(amount, rate)
@@ -214,22 +215,29 @@ def build_offer(client, product, need):
                 if option:
                     offer['alternatives'].append(option)
 
+        score = estimate(client, product, amount, term)
         offer.update(rate=rate, term_months=term, amount=round(amount, 2), max_amount=round(cap, 2))
         return (offer, score), None
 
     if product['type'] == 'card':
         cap = min(amax, calc.overdraft_limit(client))
         amount = min(requested, cap) if requested else cap
-        score = get_score(client, product, amount, term)
+        score = estimate(client, product, amount or 1.0, term)
         offer.update(amount=round(amount, 2), max_amount=round(cap, 2))
         return (offer, score), None
 
     amount = requested or 0
-    score = get_score(client, product, amount or 1.0, term)
+    score = estimate(client, product, amount or 1.0, term)
     offer.update(amount=amount or None, rate=product.get('rate_from'))
     if product['type'] == 'guarantee' and amount:
         offer['overpayment'] = calc.guarantee_cost(amount, product['rate_from'], term)
     return (offer, score), None
+
+
+RISK_WARNINGS = {
+    'C': ['при таком риске банк попросит залог или поручительство Корпорации МСП'],
+    'D': ['по предварительной оценке риск высокий, заявку, скорее всего, отклонят'],
+}
 
 
 def make_recommendation(product, need, offer, score):
@@ -238,12 +246,13 @@ def make_recommendation(product, need, offer, score):
     fit = 1.0
     if need and need.amount and offer['max_amount'] is not None:
         fit = min(1.0, offer['max_amount'] / need.amount)
-    final = match * score.approval_prob * fit
+    cls = risk_class(score.pd)
+    final = match * RISK_WEIGHT.get(cls, 1) * fit
 
     reasons = []
     if need and need.purpose and need.purpose in product['need_tags']:
         reasons.append(f'подходит под цель: {tag_names[need.purpose]}')
-    reasons.append(f'вероятность одобрения {score.approval_prob:.0%}')
+    reasons.append(f'предварительная оценка риска: класс {cls}, вероятность дефолта {score.pd:.1%}')
     if fit < 1:
         reasons.append(f'доступно до {rub(offer["max_amount"])} из запрошенных {rub(need.amount)}')
     if offer['monthly_payment']:
@@ -255,10 +264,10 @@ def make_recommendation(product, need, offer, score):
 
     return Recommendation(
         product_id=product['id'], name=product['name'], score=round(final, 4),
-        approval_prob=score.approval_prob, rate=offer['rate'], amount=offer['amount'],
+        pd=score.pd, risk_class=cls, rate=offer['rate'], amount=offer['amount'],
         max_amount=offer['max_amount'], term_months=offer['term_months'],
         monthly_payment=offer['monthly_payment'], overpayment=offer['overpayment'],
-        reasons=reasons, warnings=offer['warnings'], alternatives=offer['alternatives'],
+        reasons=reasons, warnings=offer['warnings'] + RISK_WARNINGS.get(cls, []), alternatives=offer['alternatives'],
     )
 
 

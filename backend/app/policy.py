@@ -46,6 +46,17 @@ class RiskClasses(Section):
         return self
 
 
+class RiskWeights(Section):
+    C: float = Share
+    D: float = Share
+
+    @model_validator(mode="after")
+    def decreasing(self):
+        if self.D > self.C:
+            raise ValueError("вес класса D в подборе не может быть больше веса класса C")
+        return self
+
+
 class Explanation(Section):
     min_factor_points: float = Field(ge=0)
 
@@ -63,6 +74,7 @@ class Policy(Section):
     need_match: NeedMatch
     concessions: Concessions
     risk_classes: RiskClasses
+    risk_weights: RiskWeights
     explanation: Explanation
     verification: Verification
 

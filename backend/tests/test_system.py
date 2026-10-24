@@ -167,7 +167,8 @@ def test_recommend_contract():
     assert data["recommendations"]
     assert data["recommendations"][0]["product_id"] == "overdraft"
     for rec in data["recommendations"]:
-        assert 0 <= rec["approval_prob"] <= 1
+        assert 0 <= rec["pd"] <= 1
+        assert rec["risk_class"] in "ABCD"
         assert rec["reasons"]
     for rejected in data["rejected"]:
         assert rejected["reason"]

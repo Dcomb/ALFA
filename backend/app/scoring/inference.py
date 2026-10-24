@@ -3,6 +3,8 @@ import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from app.policy import POLICY
+
 from .features import features
 
 MODEL = json.loads((Path(__file__).parent / "model.json").read_text(encoding="utf-8"))
@@ -23,6 +25,17 @@ class ScoreResult:
     pd: float
     model_version: str
     factors: list[Factor] = field(default_factory=list)
+
+
+def risk_class(pd):
+    bounds = POLICY.risk_classes
+    if pd < bounds.A:
+        return "A"
+    if pd < bounds.B:
+        return "B"
+    if pd < bounds.C:
+        return "C"
+    return "D"
 
 
 def sigmoid(z):
@@ -52,6 +65,9 @@ TEXTS = {
 MISSING = {
     "bki_score": "нет скорингового балла БКИ",
     "neg_balance_days_share_12m": "нет данных об остатках на счёте",
+    "debt_to_revenue": "нет данных БКИ о текущем долге",
+    "tax_arrears_flag": "нет данных ФНС о налоговой задолженности",
+    "mass_address_flag": "нет данных ФНС об адресе регистрации",
 }
 
 
