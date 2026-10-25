@@ -9,12 +9,12 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.agent.output import sanitize_answer_links
 from app.shemas import ChatResponse, ChatRequest
 from app.agent.graph import build_graph
 from app.conveyor import lifecycle
 from app.conveyor import models as conveyor_models
 from app.conveyor.auth import any_application, bank_employee, current_client, own_application
-from app.conveyor.db import get_session, init_db
 from app.conveyor.schemas import (
     AcceptOffer,
     ApplicationBrief,
@@ -40,7 +40,11 @@ from app.ranking.schemas import (
     RecommendRequest,
     RecommendResponse,
 )
-
+from app.conveyor.db import (
+    SessionLocal,
+    get_session,
+    init_db,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -78,21 +82,42 @@ def conveyor_error(request: Request, error: lifecycle.ConveyorError):
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
+    with SessionLocal() as session:
+        client = session.get(
+            conveyor_models.Client,
+            request.client_id,
+        )
+
+        if client is None:
+            raise HTTPException(
+                status_code=401,
+                detail="клиент не найден",
+            )
+
     result = await app.state.agent.ainvoke(
         {
             "messages": [
-                ("user", request.message)
-            ]
+                ("user", request.message),
+            ],
         },
         config={
             "configurable": {
-                "thread_id": request.thread_id
-            }
+                # Разделяем историю разных клиентов.
+                "thread_id": (
+                    f"{request.client_id}:"
+                    f"{request.thread_id}"
+                ),
+                # Tools получают клиента отсюда,
+                # а не из аргументов LLM.
+                "client_id": request.client_id,
+            },
         },
     )
 
+    answer = str(result["messages"][-1].content)
+
     return ChatResponse(
-        response=str(result["messages"][-1].content),
+        response=sanitize_answer_links(answer),
         thread_id=request.thread_id,
     )
 

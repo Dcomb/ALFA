@@ -14,12 +14,13 @@ from app.main import app
 from app.scoring.inference import MODEL_VERSION
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql://alfa:alfa@localhost:5432/alfa_test")
+TEST_DATABASE_ADMIN_DB = os.getenv("TEST_DATABASE_ADMIN_DB", "alfa")
 
 
 def prepare_test_database():
     server_url, name = TEST_DATABASE_URL.rsplit("/", 1)
     admin = make_engine(
-        f"{server_url}/postgres",
+        f"{server_url}/{TEST_DATABASE_ADMIN_DB}",
         isolation_level="AUTOCOMMIT",
         connect_args={"connect_timeout": 3},
     )

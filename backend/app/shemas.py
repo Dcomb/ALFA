@@ -34,6 +34,7 @@ class RecommendedProduct(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     thread_id: str = Field(min_length=1)
+    client_id: str = Field(min_length=1, max_length=64)
 
 
 class ChatResponse(BaseModel):

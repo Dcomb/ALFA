@@ -74,8 +74,39 @@ def delete_chat(chat_id: str):
 # =========================
 # Sidebar
 # =========================
+@st.cache_data(ttl=60)
+def load_clients():
+    response = requests.get(
+        f"{API_URL}/clients",
+        timeout=10,
+    )
+    response.raise_for_status()
+    return response.json()
 
 with st.sidebar:
+    try:
+        clients = load_clients()
+
+        client_by_id = {
+            client["id"]: client
+            for client in clients
+        }
+
+        selected_client_id = st.selectbox(
+            "Демо-клиент",
+            options=list(client_by_id),
+            format_func=lambda client_id: (
+                client_by_id[client_id]["name"]
+            ),
+        )
+
+    except requests.RequestException:
+        st.warning(
+            "Не удалось получить список клиентов"
+        )
+        selected_client_id = "demo_cafe"
+
+    st.divider()
     st.title("ALFA")
     st.caption("Adaptive Lending & Financing Assistant")
 
@@ -164,6 +195,7 @@ if prompt := st.chat_input("Напишите сообщение..."):
                     json={
                         "message": prompt,
                         "thread_id": current_chat_id,
+                        "client_id": selected_client_id,
                     },
                     timeout=180,
                 )

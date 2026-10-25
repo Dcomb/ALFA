@@ -39,6 +39,7 @@ VALID_REQUESTS = {
     ("POST", "/chat"): {
         "message": "Привет",
         "thread_id": "system-test",
+        "client_id": "demo_cafe",
     },
     ("GET", "/clients"): None,
     ("GET", "/me"): None,

@@ -15,6 +15,7 @@ services:
       DATABASE_URL: postgresql://alfa:alfa@db:5432/alfa
     volumes:
       - ./data:/app/data
+      - ./tests:/backend/system-tests:ro
     depends_on:
       db:
         condition: service_healthy

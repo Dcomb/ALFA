@@ -14,3 +14,4 @@ qdrant-client
 langchain-qdrant
 fastembed
 sqlalchemy
+pytest==8.3.5
