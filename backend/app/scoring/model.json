@@ -1,0 +1,105 @@
+{
+  "version": "logreg-v1",
+  "intercept": -3.442442,
+  "features": [
+    {
+      "name": "business_age_months",
+      "median": 42.0,
+      "mean": 63.330775,
+      "std": 66.041195,
+      "coef": -0.210936
+    },
+    {
+      "name": "dscr",
+      "median": 1.395719,
+      "mean": 1.847332,
+      "std": 2.18635,
+      "coef": -0.26577
+    },
+    {
+      "name": "bki_score",
+      "median": 561.0,
+      "mean": 558.622062,
+      "std": 75.748496,
+      "coef": -0.315588
+    },
+    {
+      "name": "profit_margin",
+      "median": 0.093967,
+      "mean": 0.101994,
+      "std": 0.085648,
+      "coef": -0.191296
+    },
+    {
+      "name": "collateral_coverage",
+      "median": 0.0,
+      "mean": 0.62383,
+      "std": 0.709598,
+      "coef": -0.158536
+    },
+    {
+      "name": "log_revenue",
+      "median": 16.941369,
+      "mean": 16.921386,
+      "std": 1.198366,
+      "coef": -0.073145
+    },
+    {
+      "name": "neg_balance_days_share_12m",
+      "median": 0.052,
+      "mean": 0.099968,
+      "std": 0.124878,
+      "coef": 0.301564
+    },
+    {
+      "name": "log_max_overdue",
+      "median": 0.0,
+      "mean": 1.40796,
+      "std": 2.01894,
+      "coef": 0.311394
+    },
+    {
+      "name": "debt_to_revenue",
+      "median": 0.052768,
+      "mean": 0.09239,
+      "std": 0.142826,
+      "coef": 0.120304
+    },
+    {
+      "name": "amount_to_revenue",
+      "median": 0.051272,
+      "mean": 0.086468,
+      "std": 0.143402,
+      "coef": 0.126096
+    },
+    {
+      "name": "court_cases_12m",
+      "median": 0.0,
+      "mean": 0.243525,
+      "std": 0.527158,
+      "coef": 0.088575
+    },
+    {
+      "name": "tax_arrears_flag",
+      "median": 0.0,
+      "mean": 0.056975,
+      "std": 0.231795,
+      "coef": 0.120518
+    },
+    {
+      "name": "mass_address_flag",
+      "median": 0.0,
+      "mean": 0.008225,
+      "std": 0.090318,
+      "coef": 0.132482
+    }
+  ],
+  "n_train": 80000,
+  "test_metrics": {
+    "roc_auc": 0.7929,
+    "pr_auc": 0.2176,
+    "brier": 0.0436,
+    "mean_pd": 0.0503,
+    "default_rate": 0.0505
+  }
+}

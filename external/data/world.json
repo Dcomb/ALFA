@@ -1,0 +1,360 @@
+{
+  "000010100195": {
+    "egrul": {
+      "inn": "000010100195",
+      "legal_form": "IP",
+      "registry_status": "active",
+      "registration_date": "2025-08-20",
+      "okved": "56.10",
+      "region_code": "77",
+      "full_name": "Соколова Анна Викторовна"
+    },
+    "fns": {
+      "mass_address_flag": 0,
+      "disqualified_person_flag": 0,
+      "tax_arrears_flag": 0,
+      "court_cases_12m": 0
+    },
+    "bank": {
+      "avg_monthly_account_turnover": 1150000,
+      "turnover_trend_6m": 0.02,
+      "revenue_seasonality_cv": 0.18,
+      "neg_balance_days_share_12m": 0.03
+    },
+    "bki": {
+      "bki_active_loans": 0,
+      "existing_debt_total": 0,
+      "existing_monthly_payment": 0,
+      "personal_monthly_payment": 0,
+      "bki_max_overdue_days_24m": 0,
+      "bki_overdue_90_24m": 0,
+      "bki_inquiries_6m": 1,
+      "bki_history_months": 30,
+      "bki_score": 640,
+      "current_overdue_days": 0
+    }
+  },
+  "0000201003": {
+    "egrul": {
+      "inn": "0000201003",
+      "legal_form": "OOO",
+      "registry_status": "active",
+      "registration_date": "2022-10-05",
+      "okved": "49.41",
+      "region_code": "78",
+      "director_name": "Громов Дмитрий Сергеевич",
+      "owners_count": 2,
+      "owner_max_share_pct": 70,
+      "director_is_owner": 1
+    },
+    "fns": {
+      "mass_address_flag": 0,
+      "disqualified_person_flag": 0,
+      "tax_arrears_flag": 0,
+      "court_cases_12m": 1
+    },
+    "girbo": {
+      "year": 2025,
+      "revenue_12m": 95000000,
+      "net_profit_12m": 9000000,
+      "total_assets": 60000000,
+      "equity_ratio": 0.45,
+      "current_ratio": 1.6
+    },
+    "bank": {
+      "avg_monthly_account_turnover": 7900000,
+      "turnover_trend_6m": 0.05,
+      "revenue_seasonality_cv": 0.12,
+      "neg_balance_days_share_12m": 0
+    },
+    "bki": {
+      "bki_active_loans": 2,
+      "existing_debt_total": 6000000,
+      "existing_monthly_payment": 300000,
+      "bki_max_overdue_days_24m": 0,
+      "bki_overdue_90_24m": 0,
+      "bki_inquiries_6m": 2,
+      "bki_history_months": 60,
+      "bki_score": 700,
+      "current_overdue_days": 0
+    }
+  },
+  "000030100210": {
+    "egrul": {
+      "inn": "000030100210",
+      "legal_form": "IP",
+      "registry_status": "active",
+      "registration_date": "2026-05-12",
+      "okved": "47.91",
+      "region_code": "50",
+      "full_name": "Лебедев Кирилл Андреевич"
+    },
+    "fns": {
+      "mass_address_flag": 0,
+      "disqualified_person_flag": 0,
+      "tax_arrears_flag": 0,
+      "court_cases_12m": 0
+    },
+    "bank": {
+      "avg_monthly_account_turnover": 380000,
+      "turnover_trend_6m": 0.15,
+      "revenue_seasonality_cv": 0.25,
+      "neg_balance_days_share_12m": 0.08
+    },
+    "bki": {
+      "bki_active_loans": 1,
+      "existing_debt_total": 250000,
+      "existing_monthly_payment": 12000,
+      "personal_monthly_payment": 12000,
+      "bki_max_overdue_days_24m": 0,
+      "bki_overdue_90_24m": 0,
+      "bki_inquiries_6m": 3,
+      "bki_history_months": 18,
+      "bki_score": 600,
+      "current_overdue_days": 0
+    }
+  },
+  "000040100499": {
+    "behavior": {
+      "bki": "error"
+    },
+    "egrul": {
+      "inn": "000040100499",
+      "legal_form": "IP",
+      "registry_status": "active",
+      "registration_date": "2023-03-01",
+      "okved": "96.02",
+      "region_code": "66",
+      "full_name": "Орлова Мария Павловна"
+    },
+    "fns": {
+      "mass_address_flag": 0,
+      "disqualified_person_flag": 0,
+      "tax_arrears_flag": 0,
+      "court_cases_12m": 0
+    },
+    "bank": {
+      "avg_monthly_account_turnover": 900000,
+      "turnover_trend_6m": 0,
+      "revenue_seasonality_cv": 0.1,
+      "neg_balance_days_share_12m": 0.02
+    },
+    "bki": {
+      "bki_active_loans": 0,
+      "existing_debt_total": 0,
+      "existing_monthly_payment": 0,
+      "personal_monthly_payment": 0,
+      "bki_max_overdue_days_24m": 0,
+      "bki_overdue_90_24m": 0,
+      "bki_inquiries_6m": 0,
+      "bki_history_months": 40,
+      "bki_score": 680,
+      "current_overdue_days": 0
+    }
+  },
+  "0000501007": {
+    "egrul": {
+      "inn": "0000501007",
+      "legal_form": "OOO",
+      "registry_status": "liquidated",
+      "registration_date": "2019-06-17",
+      "okved": "41.20",
+      "region_code": "16",
+      "director_name": "Сидоров Павел Игоревич",
+      "owners_count": 1,
+      "owner_max_share_pct": 100,
+      "director_is_owner": 1
+    },
+    "fns": {
+      "mass_address_flag": 0,
+      "disqualified_person_flag": 0,
+      "tax_arrears_flag": 0,
+      "court_cases_12m": 2
+    },
+    "girbo": {
+      "year": 2025,
+      "revenue_12m": 40000000,
+      "net_profit_12m": 2500000,
+      "total_assets": 22000000,
+      "equity_ratio": 0.3,
+      "current_ratio": 1.2
+    },
+    "bank": {
+      "avg_monthly_account_turnover": 3200000,
+      "turnover_trend_6m": -0.05,
+      "revenue_seasonality_cv": 0.2,
+      "neg_balance_days_share_12m": 0.04
+    },
+    "bki": {
+      "bki_active_loans": 1,
+      "existing_debt_total": 1500000,
+      "existing_monthly_payment": 80000,
+      "current_overdue_days": 0,
+      "bki_max_overdue_days_24m": 0,
+      "bki_overdue_90_24m": 0,
+      "bki_inquiries_6m": 2,
+      "bki_history_months": 70,
+      "bki_score": 650
+    }
+  },
+  "0000701006": {
+    "egrul": {
+      "inn": "0000701006",
+      "legal_form": "OOO",
+      "registry_status": "active",
+      "registration_date": "2019-06-17",
+      "okved": "41.20",
+      "region_code": "16",
+      "director_name": "Белов Олег Николаевич",
+      "owners_count": 1,
+      "owner_max_share_pct": 100,
+      "director_is_owner": 1
+    },
+    "fns": {
+      "mass_address_flag": 0,
+      "disqualified_person_flag": 1,
+      "tax_arrears_flag": 0,
+      "court_cases_12m": 2
+    },
+    "girbo": {
+      "year": 2025,
+      "revenue_12m": 40000000,
+      "net_profit_12m": 2500000,
+      "total_assets": 22000000,
+      "equity_ratio": 0.3,
+      "current_ratio": 1.2
+    },
+    "bank": {
+      "avg_monthly_account_turnover": 3200000,
+      "turnover_trend_6m": -0.05,
+      "revenue_seasonality_cv": 0.2,
+      "neg_balance_days_share_12m": 0.04
+    },
+    "bki": {
+      "bki_active_loans": 1,
+      "existing_debt_total": 1500000,
+      "existing_monthly_payment": 80000,
+      "current_overdue_days": 0,
+      "bki_max_overdue_days_24m": 0,
+      "bki_overdue_90_24m": 0,
+      "bki_inquiries_6m": 2,
+      "bki_history_months": 70,
+      "bki_score": 650
+    }
+  },
+  "000060100440": {
+    "egrul": {
+      "inn": "000060100440",
+      "legal_form": "IP",
+      "registry_status": "active",
+      "registration_date": "2021-09-01",
+      "okved": "45.20",
+      "region_code": "54",
+      "full_name": "Ковалёв Артём Сергеевич"
+    },
+    "fns": {
+      "mass_address_flag": 0,
+      "disqualified_person_flag": 0,
+      "tax_arrears_flag": 1,
+      "court_cases_12m": 1
+    },
+    "bank": {
+      "avg_monthly_account_turnover": 700000,
+      "turnover_trend_6m": -0.1,
+      "revenue_seasonality_cv": 0.15,
+      "neg_balance_days_share_12m": 0.12
+    },
+    "bki": {
+      "bki_active_loans": 2,
+      "existing_debt_total": 900000,
+      "existing_monthly_payment": 45000,
+      "personal_monthly_payment": 20000,
+      "current_overdue_days": 45,
+      "bki_max_overdue_days_24m": 45,
+      "bki_overdue_90_24m": 0,
+      "bki_inquiries_6m": 5,
+      "bki_history_months": 50,
+      "bki_score": 520
+    }
+  },
+  "000080100400": {
+    "egrul": {
+      "inn": "000080100400",
+      "legal_form": "IP",
+      "registry_status": "active",
+      "registration_date": "2023-04-10",
+      "okved": "47.11",
+      "region_code": "63",
+      "full_name": "Зайцева Ольга Игоревна"
+    },
+    "fns": {
+      "mass_address_flag": 0,
+      "disqualified_person_flag": 0,
+      "tax_arrears_flag": 0,
+      "court_cases_12m": 2
+    },
+    "bank": {
+      "avg_monthly_account_turnover": 1100000,
+      "turnover_trend_6m": 0,
+      "revenue_seasonality_cv": 0.2,
+      "neg_balance_days_share_12m": 0.35
+    },
+    "bki": {
+      "bki_active_loans": 2,
+      "existing_debt_total": 600000,
+      "existing_monthly_payment": 30000,
+      "current_overdue_days": 0,
+      "bki_max_overdue_days_24m": 45,
+      "bki_overdue_90_24m": 0,
+      "bki_inquiries_6m": 6,
+      "bki_history_months": 36,
+      "bki_score": 470,
+      "personal_monthly_payment": 15000
+    }
+  },
+  "0000901005": {
+    "egrul": {
+      "inn": "0000901005",
+      "legal_form": "OOO",
+      "registry_status": "active",
+      "registration_date": "2023-04-10",
+      "okved": "25.62",
+      "region_code": "52",
+      "director_name": "Фролов Игорь Викторович",
+      "owners_count": 2,
+      "owner_max_share_pct": 60,
+      "director_is_owner": 1
+    },
+    "fns": {
+      "mass_address_flag": 0,
+      "disqualified_person_flag": 0,
+      "tax_arrears_flag": 0,
+      "court_cases_12m": 2
+    },
+    "girbo": {
+      "year": 2025,
+      "revenue_12m": 30000000,
+      "net_profit_12m": 1800000,
+      "total_assets": 15000000,
+      "equity_ratio": 0.35,
+      "current_ratio": 1.3
+    },
+    "bank": {
+      "avg_monthly_account_turnover": 2500000,
+      "turnover_trend_6m": 0,
+      "revenue_seasonality_cv": 0.15,
+      "neg_balance_days_share_12m": 0.35
+    },
+    "bki": {
+      "bki_active_loans": 2,
+      "existing_debt_total": 600000,
+      "existing_monthly_payment": 30000,
+      "current_overdue_days": 0,
+      "bki_max_overdue_days_24m": 45,
+      "bki_overdue_90_24m": 0,
+      "bki_inquiries_6m": 6,
+      "bki_history_months": 36,
+      "bki_score": 470
+    }
+  }
+}
