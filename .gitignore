@@ -5,4 +5,8 @@ docs/architecture.md
 docker-compose.override.yml
 __pycache__/
 .pytest_cache/
+node_modules/
+dist/
+*.tsbuildinfo
 /data/
+/backups/*.dump
