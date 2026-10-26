@@ -10,11 +10,19 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${DOCKER_LLM_BASE_URL:-http://host.docker.internal:11434/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-ollama}
+      LLM_CONTEXT_SIZE: ${LLM_CONTEXT_SIZE:-8192}
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-alfa_knowledge}
       DATABASE_URL: postgresql://alfa:alfa@db:5432/alfa
+      EXTERNAL_API_URL: http://external:8100
+      UPLOAD_DIR: /app/data/uploads
     volumes:
       - ./data:/app/data
+      - ./tests:/backend/system-tests:ro
     depends_on:
       db:
         condition: service_healthy
@@ -22,13 +30,48 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  backend-test:
+    profiles: ["test"]
+    build: ./backend
+    ports:
+      - "127.0.0.1:8001:8000"
+    env_file:
+      - .env
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${DOCKER_LLM_BASE_URL:-http://host.docker.internal:11434/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-ollama}
+      LLM_CONTEXT_SIZE: ${LLM_CONTEXT_SIZE:-8192}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-alfa_knowledge}
+      DATABASE_URL: postgresql://alfa:alfa@db:5432/alfa_system_test
+      EXTERNAL_API_URL: http://external:8100
+      UPLOAD_DIR: /app/data/test-uploads
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      external:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/openapi.json', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
   frontend:
     build: ./frontend
     container_name: alfa-frontend
     ports:
       - "8501:8501"
-    environment:
-      API_URL: http://backend:8000
     depends_on:
       - backend
     restart: unless-stopped

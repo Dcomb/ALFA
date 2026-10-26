@@ -21,10 +21,16 @@ TRANSITIONS = {
     ("scoring", "declined"): "system",
     ("counteroffer", "approved"): "client",
     ("counteroffer", "closed"): "client",
+    ("approved", "issued"): "client",
 }
 
 EDITABLE = {"draft", "needs_info"}
 MAX_INFO_ROUNDS = POLICY.verification.max_info_rounds
+SUPPORTING_DOCUMENTS = {
+    "bank_statement",
+    "financial_report",
+    "income_confirmation",
+}
 
 REQUIRED_FOR_SUBMIT = {
     "product_id": "продукт",
@@ -92,9 +98,23 @@ def validate_fields(session, client, fields):
 def create(session, client, fields):
     validate_fields(session, client, fields)
 
+    supplied_snapshot = fields.pop("client_snapshot", {})
+    client_snapshot = {
+        **supplied_snapshot,
+        "client_id": client.id,
+        "owner_name": client.owner_name,
+        "company_name": client.name,
+        "inn": client.inn,
+        "ogrn": client.ogrn or supplied_snapshot.get("ogrn", ""),
+        "registration_date": client.registration_date or supplied_snapshot.get("registration_date", ""),
+        "activity": supplied_snapshot.get("activity") or client.okved,
+        "phone": client.phone or supplied_snapshot.get("phone", ""),
+    }
+
     application = Application(
         client_id=client.id,
         status="draft",
+        client_snapshot=client_snapshot,
         history=[StatusChange(from_status=None, to_status="draft", actor="client", reason="черновик создан")],
         **fields,
     )
@@ -246,17 +266,31 @@ def latest_answers(application):
 def evaluate(session, client, application, answers):
     findings = verification.verify(client, application, answers)
 
+    uploaded_kinds = {
+        document.kind
+        for document in application.documents
+    }
+    documents_complete = SUPPORTING_DOCUMENTS <= uploaded_kinds
+
     for finding in findings:
         application.checks.append(Check(
             round=application.info_rounds,
-            kind=finding.kind,
+            kind=(
+                "resolved"
+                if documents_complete and finding.kind == "discrepancy"
+                else finding.kind
+            ),
             code=finding.code,
             message=finding.message,
             data=finding.data,
         ))
 
     stops = [f.message for f in findings if f.kind == "stop_factor"]
-    discrepancies = [f.message for f in findings if f.kind == "discrepancy"]
+    discrepancies = [
+        f.message
+        for f in findings
+        if f.kind == "discrepancy" and not documents_complete
+    ]
 
     if stops:
         decline(session, application, stops)
@@ -274,6 +308,25 @@ def withdraw(session, application):
 
     try:
         transition(session, application, "withdrawn", "client", "заявка отозвана клиентом")
+    except NotAllowed:
+        session.rollback()
+        raise
+
+    session.commit()
+    return application
+
+
+def finalize(session, application):
+    lock(session, application)
+
+    try:
+        transition(
+            session,
+            application,
+            "issued",
+            "client",
+            "клиент оформил одобренный кредит",
+        )
     except NotAllowed:
         session.rollback()
         raise

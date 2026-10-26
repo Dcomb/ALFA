@@ -1,4 +1,5 @@
 import os
+import time
 
 import httpx
 import pytest
@@ -9,16 +10,20 @@ PGADMIN_URL = os.getenv("SYSTEM_PGADMIN_URL", "http://localhost:5050")
 OLLAMA_URL = os.getenv("SYSTEM_OLLAMA_URL", "http://localhost:11434")
 
 
-def load_spec():
-    try:
-        return httpx.get(f"{API_URL}/openapi.json", timeout=3).json()
-    except (httpx.HTTPError, ValueError):
-        return None
+def load_spec(attempts: int = 30, delay: float = 1.0):
+    """Wait for the isolated test backend instead of silently skipping the suite."""
+    for attempt in range(attempts):
+        try:
+            response = httpx.get(f"{API_URL}/openapi.json", timeout=3)
+            response.raise_for_status()
+            return response.json()
+        except (httpx.HTTPError, ValueError):
+            if attempt + 1 < attempts:
+                time.sleep(delay)
+    raise RuntimeError(f"Тестовый бэкенд не отвечает на {API_URL}")
 
 
 SPEC = load_spec()
-
-pytestmark = pytest.mark.skipif(SPEC is None, reason=f"бэкенд не отвечает на {API_URL}")
 
 VALID_REQUESTS = {
     ("GET", "/ranking/products"): None,
@@ -39,8 +44,18 @@ VALID_REQUESTS = {
     ("POST", "/chat"): {
         "message": "Привет",
         "thread_id": "system-test",
+        "client_id": "demo_cafe",
     },
     ("GET", "/clients"): None,
+    ("POST", "/clients/register"): {
+        "owner_name": "Соколова Анна Викторовна",
+        "name": "ИП Соколова А. В., кафе",
+        "inn": "000010100195",
+        "ogrn": "324770000101950",
+        "activity": "Общественное питание",
+        "registration_date": "15.01.2024",
+        "legal_form": "ip",
+    },
     ("GET", "/me"): None,
     ("GET", "/applications"): None,
     ("POST", "/applications"): {
@@ -60,6 +75,9 @@ VALID_REQUESTS = {
     ("GET", "/applications/{application_id}/processing"): None,
     ("POST", "/applications/{application_id}/accept"): {"option": 0},
     ("POST", "/applications/{application_id}/decline-offer"): None,
+    ("POST", "/applications/{application_id}/finalize"): None,
+    ("GET", "/applications/{application_id}/documents"): None,
+    ("POST", "/applications/{application_id}/documents/{kind}"): {"_file": True},
     ("GET", "/bank/applications"): None,
     ("GET", "/bank/applications/{application_id}"): None,
 }
@@ -68,9 +86,12 @@ CLIENT_HEADERS = {"X-Client-Id": "demo_cafe", "X-Role": "bank"}
 
 EXPECTED_STATUS = {
     ("POST", "/applications"): 201,
+    ("POST", "/clients/register"): 409,
+    ("POST", "/applications/{application_id}/documents/{kind}"): 201,
     ("POST", "/applications/{application_id}/process"): 409,
     ("POST", "/applications/{application_id}/accept"): 409,
     ("POST", "/applications/{application_id}/decline-offer"): 409,
+    ("POST", "/applications/{application_id}/finalize"): 409,
 }
 
 NEEDS_OLLAMA = {("POST", "/chat")}
@@ -109,10 +130,20 @@ def new_application_id():
 def url(path):
     if "{application_id}" in path:
         path = path.replace("{application_id}", str(new_application_id()))
+    if "{kind}" in path:
+        path = path.replace("{kind}", "bank_statement")
     return f"{API_URL}{path}"
 
 
 def call(method, path, body=None):
+    if path == "/applications/{application_id}/documents/{kind}" and body == {"_file": True}:
+        return httpx.request(
+            method,
+            url(path),
+            files={"file": ("statement.pdf", b"synthetic", "application/pdf")},
+            headers=CLIENT_HEADERS,
+            timeout=60,
+        )
     return httpx.request(method, url(path), json=body, headers=CLIENT_HEADERS, timeout=60)
 
 

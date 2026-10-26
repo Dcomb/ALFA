@@ -116,12 +116,28 @@ DEMO_CLIENTS = [
     },
 ]
 
+DEMO_REGISTRATION_META = {
+    "demo_cafe": {"ogrn": "324770000101950", "registration_date": "15.01.2024", "phone": "+7 987 234 67 82"},
+    "demo_logistics": {"ogrn": "1227700201003", "registration_date": "11.10.2022", "phone": "+7 905 455 24 10"},
+    "demo_newbie": {"ogrn": "326770030100210", "registration_date": "18.05.2026", "phone": "+7 916 300 10 21"},
+    "demo_unstable_bki": {"ogrn": "323770040100499", "registration_date": "01.03.2023", "phone": "+7 916 400 10 49"},
+    "demo_liquidated": {"ogrn": "1197700501007", "registration_date": "17.06.2019", "phone": "+7 905 500 10 07"},
+    "demo_overdue": {"ogrn": "319770060100440", "registration_date": "17.06.2019", "phone": "+7 916 600 10 44"},
+    "demo_disqualified": {"ogrn": "1217700701006", "registration_date": "01.09.2021", "phone": "+7 905 700 10 06"},
+    "demo_gray": {"ogrn": "323770080100400", "registration_date": "10.04.2023", "phone": "+7 916 800 10 40"},
+    "demo_gray_ooo": {"ogrn": "1237700901005", "registration_date": "10.04.2023", "phone": "+7 905 900 10 05"},
+}
+
 
 def seed_demo_clients(session):
     for data in DEMO_CLIENTS:
-        if session.get(Client, data["id"]) is not None:
+        metadata = DEMO_REGISTRATION_META[data["id"]]
+        existing = session.get(Client, data["id"])
+        if existing is not None:
+            for key, value in metadata.items():
+                setattr(existing, key, value)
             continue
         fields = {key: value for key, value in data.items() if key != "assets"}
-        client = Client(**fields, assets=[Asset(**asset) for asset in data["assets"]])
+        client = Client(**fields, **metadata, assets=[Asset(**asset) for asset in data["assets"]])
         session.add(client)
     session.commit()

@@ -22,6 +22,9 @@ class Client(Base):
     has_alfa_account: Mapped[bool]
     owner_name: Mapped[str]
     owner_age: Mapped[int | None]
+    ogrn: Mapped[str | None]
+    registration_date: Mapped[str | None]
+    phone: Mapped[str | None]
 
     assets: Mapped[list["Asset"]] = relationship(back_populates="client", order_by="Asset.id")
 
@@ -57,6 +60,8 @@ class Application(Base):
     bki_consent: Mapped[bool] = mapped_column(default=False)
     info_rounds: Mapped[int] = mapped_column(default=0)
     accepted_option: Mapped[dict | None] = mapped_column(JSON)
+    client_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    credit_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -66,6 +71,10 @@ class Application(Base):
     sources: Mapped[list["SourceResponse"]] = relationship(order_by="SourceResponse.id")
     checks: Mapped[list["Check"]] = relationship(order_by="Check.id")
     decisions: Mapped[list["Decision"]] = relationship(order_by="Decision.id")
+    documents: Mapped[list["ApplicationDocument"]] = relationship(
+        order_by="ApplicationDocument.id",
+        cascade="all, delete-orphan",
+    )
 
     @property
     def decision(self):
@@ -137,3 +146,22 @@ class Decision(Base):
     model_version: Mapped[str | None]
     policy_version: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ApplicationDocument(Base):
+    __tablename__ = "conveyor_application_documents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(
+        ForeignKey("conveyor_applications.id"),
+        index=True,
+    )
+    kind: Mapped[str] = mapped_column(String(32))
+    filename: Mapped[str]
+    stored_name: Mapped[str]
+    content_type: Mapped[str | None]
+    size_bytes: Mapped[int]
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+    )
