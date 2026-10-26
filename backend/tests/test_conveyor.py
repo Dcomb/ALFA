@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
-from app.conveyor import sources
+from app.conveyor import lifecycle, sources
 from app.conveyor.db import Base, SessionLocal, init_db, make_engine
 from app.conveyor.demo import DEMO_CLIENTS
 from app.conveyor.models import Application, Client
@@ -135,6 +135,25 @@ def test_me_returns_profile_with_assets():
     assert {a["kind"] for a in me["assets"]} == {"real_estate", "vehicle"}
 
 
+def test_client_registration_creates_login_profile():
+    response = client.post("/clients/register", json={
+        "owner_name": "Иванов Иван Иванович",
+        "name": "ООО «Тестовый клиент»",
+        "inn": "1234567890",
+        "ogrn": "1234567890123",
+        "activity": "Разработка программного обеспечения",
+        "registration_date": "12.03.2023",
+        "legal_form": "ooo",
+    })
+    assert response.status_code == 201, response.text
+    registered = response.json()
+    assert registered["id"].startswith("client_")
+    profile = client.get("/me", headers={"X-Client-Id": registered["id"]})
+    assert profile.status_code == 200
+    assert profile.json()["ogrn"] == "1234567890123"
+    assert profile.json()["registration_date"] == "12.03.2023"
+
+
 def test_applications_empty_list():
     assert client.get("/applications", headers=CAFE).json() == []
 
@@ -143,6 +162,7 @@ def test_owner_sees_application():
     application_id = add_application("demo_cafe")
     assert client.get(f"/applications/{application_id}", headers=CAFE).status_code == 200
     assert [a["id"] for a in client.get("/applications", headers=CAFE).json()] == [application_id]
+    assert client.get("/applications", headers=CAFE).json()[0]["client_id"] == "demo_cafe"
 
 
 def test_foreign_application_is_not_found():
@@ -177,8 +197,15 @@ def statuses(application):
 
 
 def test_create_draft():
-    application = create()
+    application = create(
+        client_snapshot={"ogrn": "324770000101950", "activity": "Кафе"},
+        credit_snapshot={"product_name": "Кредит на бизнес", "rate": 14.5},
+    )
     assert application["status"] == "draft"
+    assert application["client_snapshot"]["company_name"] == "ИП Соколова А. В., кафе"
+    assert application["client_snapshot"]["ogrn"] == "324770000101950"
+    assert application["credit_snapshot"]["product_name"] == "Кредит на бизнес"
+    assert application["credit_snapshot"]["rate"] == 14.5
     assert statuses(application) == [(None, "draft", "client")]
 
 
@@ -225,6 +252,59 @@ def test_submit_complete_draft():
         ("checking", "scoring", "system"),
         ("scoring", "approved", "system"),
     ]
+
+
+def test_approved_application_can_be_finalized():
+    application = submit()
+    response = client.post(
+        f"/applications/{application['id']}/finalize",
+        headers=CAFE,
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "issued"
+    assert response.json()["history"][-1]["to_status"] == "issued"
+
+
+def test_draft_cannot_be_finalized():
+    application = create()
+    response = client.post(
+        f"/applications/{application['id']}/finalize",
+        headers=CAFE,
+    )
+    assert response.status_code == 409
+
+
+def test_supporting_documents_are_uploaded_and_listed(tmp_path, monkeypatch):
+    from app import main
+
+    monkeypatch.setattr(main, "UPLOAD_DIR", tmp_path)
+    application = create()
+
+    for kind in lifecycle.SUPPORTING_DOCUMENTS:
+        response = client.post(
+            f"/applications/{application['id']}/documents/{kind}",
+            files={"file": (f"{kind}.pdf", b"synthetic document", "application/pdf")},
+            headers=CAFE,
+        )
+        assert response.status_code == 201, response.text
+        assert response.json()["kind"] == kind
+
+    documents = client.get(
+        f"/applications/{application['id']}/documents",
+        headers=CAFE,
+    ).json()
+    assert {document["kind"] for document in documents} == lifecycle.SUPPORTING_DOCUMENTS
+    assert len(list(tmp_path.iterdir())) == 3
+
+
+def test_unknown_document_kind_is_rejected():
+    application = create()
+    response = client.post(
+        f"/applications/{application['id']}/documents/unknown",
+        files={"file": ("test.pdf", b"test", "application/pdf")},
+        headers=CAFE,
+    )
+    assert response.status_code == 422
 
 
 def test_submit_incomplete_lists_missing():

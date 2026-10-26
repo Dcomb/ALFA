@@ -2,6 +2,7 @@ import os
 
 from langchain_core.messages import SystemMessage
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 from langgraph.graph import MessagesState, START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
@@ -9,16 +10,31 @@ from app.agent.prompts import SYSTEM_PROMPT
 from app.agent.tools import TOOLS
 
 
-llm = ChatOllama(
-    model=os.getenv("OLLAMA_MODEL"),
-    base_url=os.getenv(
-        "OLLAMA_BASE_URL",
-        "http://localhost:11434",
-    ),
-    temperature=0,
-    num_ctx=8192,
-    keep_alive=-1,
-)
+def configured_llm():
+    provider = os.getenv("LLM_PROVIDER", "ollama").strip().lower()
+    model = os.getenv("LLM_MODEL") or os.getenv("OLLAMA_MODEL")
+
+    if provider == "openai_compatible":
+        return ChatOpenAI(
+            model=model,
+            base_url=os.getenv("LLM_BASE_URL", "http://localhost:11434/v1"),
+            api_key=os.getenv("LLM_API_KEY", "ollama"),
+            temperature=0,
+        )
+
+    if provider != "ollama":
+        raise ValueError("LLM_PROVIDER должен быть ollama или openai_compatible")
+
+    return ChatOllama(
+        model=model,
+        base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        temperature=0,
+        num_ctx=int(os.getenv("LLM_CONTEXT_SIZE", "8192")),
+        keep_alive=-1,
+    )
+
+
+llm = configured_llm()
 
 llm_with_tools = llm.bind_tools(TOOLS)
 
